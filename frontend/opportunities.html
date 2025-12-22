@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Opportunities - HANDSCONNECT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .opportunity-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-apply {
+            background-color: #41d6d4;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-apply:hover {
+            background-color: #36b3b0;
+        }
+
+        .applied {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .login-prompt {
+            background-color: #ffc107;
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Temporary dev-only shortcut to dashboard.html -->
+    <div style="position: absolute; top: 10px; left: 10px;">
+        <a id="auth-link" class="btn btn-primary">
+            <i class="fa-solid fa-user"></i> Loading...
+        </a>
+    </div>
+
+
+    <div class="header">
+        <h1>Volunteering Opportunities</h1>
+    </div>
+
+    <!-- Search & Filter Section -->
+    <div class="search-filter-container">
+        <input type="text" id="searchName" placeholder="Search by Name">
+        <input type="text" id="searchLocation" placeholder="Search by Location">
+        <input type="date" id="searchDate">
+        <select id="searchDuration">
+            <option value="">Select Duration</option>
+            <option value="short">Short-Term</option>
+            <option value="long">Long-Term</option>
+        </select>
+        <select id="searchField">
+            <option value="">Select Field</option>
+            <option value="education">Education</option>
+            <option value="health">Health</option>
+            <option value="environment">Environment</option>
+            <option value="community">Community</option>
+        </select>
+        <button class="search-button" onclick="filterOpportunities()">Search</button>
+    </div>
+
+    <!-- Opportunities Feed -->
+    <div class="opportunities-container" id="opportunitiesContainer">
+        <!-- Cards will be injected here dynamically -->
+    </div>
+
+    <script>
+        // Authentication functions
+
+        function checkAuth() {
+            const token = localStorage.getItem("token");
+            return token != null;  // Return true if a token exists, otherwise false
+        }
+        function updateAuthUI() {
+    const authLink = document.getElementById('auth-link');
+    if (!authLink) return;
+
+    if (checkAuth()) {
+        // User is authenticated - show "View Profile" link.
+        const userId = localStorage.getItem('user_id');
+        authLink.innerHTML = '<i class="fa-solid fa-user"></i> View Profile';
+        authLink.href = `profile.html?userId=${userId}`;
+
+        // Create and show the log out button if it doesn't already exist
+        let logoutBtn = document.getElementById('logout-btn');
+        if (!logoutBtn) {
+            logoutBtn = document.createElement('button');
+            logoutBtn.id = 'logout-btn';
+            logoutBtn.classList.add('btn', 'btn-danger');
+            logoutBtn.style.marginLeft = '10px';
+            logoutBtn.textContent = 'Log Out';
+            logoutBtn.addEventListener('click', function() {
+                // Remove stored credentials and refresh the page.
+                localStorage.removeItem("token");
+                localStorage.removeItem("user_id");
+                window.location.reload();
+            });
+            authLink.parentElement.appendChild(logoutBtn);
+        }
+    } else {
+        // User not authenticated - show "Login" link.
+        authLink.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Login';
+        authLink.href = 'login.html';
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.remove();
+        }
+    }
+}
+
+
+
+        // Application functions
+        async function applyForOpportunity(opportunityId) {
+
+            if (!checkAuth()) {
+
+                alert('Please login to apply for opportunities');
+
+                window.location.href = 'login.html';
+
+                return;
+
+            }
+
+
+
+            try {
+
+                const response = await fetch('https://handsconnect-516m.onrender.com/api/applications', {
+
+                    method: 'POST',
+
+                    headers: {
+
+                        'Content-Type': 'application/json',
+
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+
+                    },
+
+                    body: JSON.stringify({ opportunity_id: opportunityId })
+
+                });
+
+
+
+                if (!response.ok) {
+
+                    const errorData = await response.json();
+
+                    throw new Error(errorData.error || 'Application failed');
+
+                }
+
+
+
+                const data = await response.json();
+
+
+
+                // Update all apply buttons for this opportunity
+
+                const applyButtons = document.querySelectorAll(`.apply-now[data-opportunity-id="${opportunityId}"]`);
+
+                applyButtons.forEach(button => {
+
+                    button.textContent = 'Applied';
+
+                    button.classList.add('applied');
+
+                    button.disabled = true;
+
+                });
+
+
+
+                alert('Application submitted successfully!');
+
+            } catch (error) {
+
+                console.error('Error:', error);
+
+                alert(error.message);
+
+            }
+
+        }
+
+        function filterOpportunities() {
+    const filters = {
+        title: document.getElementById("searchName").value.toLowerCase(),
+        location: document.getElementById("searchLocation").value.toLowerCase(),
+        "start-date": document.getElementById("searchDate").value,
+        duration: document.getElementById("searchDuration").value,
+        field: document.getElementById("searchField").value
+    };
+
+    document.querySelectorAll(".opportunity-card").forEach(card => {
+        const matches = Object.entries(filters).every(([key, value]) => {
+            if (!value) return true;
+            const cardValue = card.getAttribute(`data-${key}`);
+            if (!cardValue) return false;
+            return key === 'start-date' ? cardValue === value : cardValue.toLowerCase().includes(value);
+        });
+        card.style.display = matches ? "block" : "none";
+    });
+}
+
+
+        // Load opportunities
+        async function loadOpportunities() {
+            try {
+                const response = await fetch("https://handsconnect-516m.onrender.com/api/opportunities/all");
+                if (!response.ok) throw new Error('Failed to load opportunities');
+
+                const data = await response.json();
+                const container = document.getElementById("opportunitiesContainer");
+                container.innerHTML = data.length ? "" : "<p>No opportunities found.</p>";
+
+                data.forEach(opportunity => {
+                    const card = document.createElement("div");
+                    card.classList.add("opportunity-card");
+
+                    // Set data attributes
+                    ['title', 'location', 'start_date', 'duration', 'field'].forEach(attr => {
+                        card.setAttribute(`data-${attr.replace('_', '-')}`,
+                            opportunity[attr] || (attr === 'duration' ? 'short' : 'community'));
+                    });
+
+                    // Modified button logic
+                    const buttonHTML = checkAuth() ?
+                        `<button class="${opportunity.has_applied ? 'btn-apply applied' : 'btn-apply apply-now'}" 
+                        data-opportunity-id="${opportunity.opportunity_id}" 
+                        ${opportunity.has_applied ? 'disabled' : ''}>
+                    ${opportunity.has_applied ? 'Applied' : 'Apply'}
+                </button>`
+                        :
+                        `<button class="btn-apply login-prompt" 
+                        onclick="window.location.href='login.html'">
+                    Login to Apply
+                </button>`;
+
+                    card.innerHTML = `
+                <h2 class="opportunity-title">${opportunity.title}</h2>
+                <p class="opportunity-ngo">From ${opportunity.start_date} to ${opportunity.end_date}</p>
+                <p><strong>Location:</strong> ${opportunity.location}</p>
+                <p>${opportunity.description}</p>
+                <div class="button-container">
+                    <a href="detailedView.html?id=${opportunity.opportunity_id}" class="btn-apply">View Details</a>
+                    ${buttonHTML}
+                </div>
+            `;
+
+                    if (checkAuth() && !opportunity.has_applied) {
+                        card.querySelector('.apply-now').addEventListener('click', (e) => {
+                            e.preventDefault();
+                            applyForOpportunity(opportunity.opportunity_id);
+                        });
+                    }
+
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error("Error loading opportunities:", error);
+                document.getElementById("opportunitiesContainer").innerHTML = `
+            <div class="alert alert-danger">
+                Error loading opportunities: ${error.message}
+            </div>
+        `;
+            }
+        }
+
+        // Initialize
+        document.addEventListener("DOMContentLoaded", () => {
+            updateAuthUI();
+            loadOpportunities();
+            console.log(checkAuth());
+        });
+    </script>
+</body>
+
+</html>

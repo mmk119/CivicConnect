@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us - HandsConnect</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+  <!-- Google Fonts: Roboto for a modern, clean look -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* Global Styles */
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: url('handinhand.jpeg') no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+      margin: 0;
+      padding-top: 80px;
+      color: #f8f9fa; /* Lighter text for contrast */
+      text-align: center;
+    }
+    
+    /* Refined overlay with gradient effect */
+    .overlay {
+      background: linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0.65));
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    
+    /* Enhanced Navbar Styling */
+    .navbar {
+      background: linear-gradient(90deg, #0062E6, #33AEFF);
+      padding: 15px 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+      transition: background 0.3s ease;
+    }
+    
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      transition: transform 0.3s ease;
+    }
+    
+    .navbar-brand img {
+      height: 45px;
+      margin-right: 10px;
+    }
+    
+    .navbar-brand:hover img {
+      transform: scale(1.05);
+    }
+    
+    /* Main content container styling with fade-in animation */
+    .container-content {
+      background: rgba(0, 0, 0, 0.75);
+      padding: 40px 30px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-top: 50px;
+      width: 90%;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      animation: fadeInUp 1s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Headings and text */
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 20px;
+    }
+    
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 25px;
+      font-weight: 700;
+    }
+    
+    p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    
+    /* Activity and Testimonial Cards */
+    .activity, .testimonial {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .activity:hover, .testimonial:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    }
+    
+    .activity img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 10px;
+      transition: opacity 0.3s ease;
+    }
+    
+    .activity img:hover {
+      opacity: 0.9;
+    }
+    
+    /* Stars rating for testimonials */
+    .stars {
+      color: gold;
+      font-size: 1.5rem;
+      margin-top: 5px;
+    }
+    
+    /* Footer Styling */
+    .footer {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.75);
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .footer a {
+      color: #17a2b8;
+      font-weight: bold;
+      text-decoration: none;
+      transition: color 0.3s ease, text-decoration 0.3s ease;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+      color: #1ab5cc;
+    }
+    
+    /* Spacing for sections */
+    .activities-section, .testimonials-section {
+      margin-top: 40px;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .container-content {
+        width: 100%;
+        padding: 30px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="overlay"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="landingpage.html">
+        Home
+      </a>
+    </div>
+  </nav>
+
+  <div class="container mt-5">
+    <div class="container-content">
+      <h1>About HandsConnect</h1>
+      <p>
+        At HandsConnect, we believe that making a difference should be simple. Designed with purpose and passion, our platform bridges the gap between non-governmental organizations (NGOs) and compassionate individuals—students, locals, and changemakers—who are ready to give their time and talents to causes that matter. Unlike complex platforms that get in the way, HandsConnect brings volunteering to your fingertips. NGOs can easily post opportunities, and volunteers can discover and apply for roles that match their interests—all in one place. It's not just about connecting hands—it's about building communities.
+      </p>
+      
+      <!-- Activities Section -->
+      <div class="activities-section">
+        <h2>Some Activities Which Took Place via Our Website</h2>
+        <div class="row mt-4">
+          <div class="col-md-4">
+            <div class="activity">
+              <img src="activity1.jpeg" alt="Community Cleanup">
+              <p><strong>Community Cleanup Drive</strong></p>
+              <p>Volunteers gathered to clean parks and public spaces, promoting environmental awareness.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="activity">
+              <img src="activity2.jpeg" alt="Food Distribution">
+              <p><strong>Food Distribution for the Needy</strong></p>
+              <p>NGO partnerships provided meals to underprivileged communities, benefiting hundreds of people.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="activity">
+              <img src="activity3.jpeg" alt="Education Program">
+              <p><strong>Education Support for Children</strong></p>
+              <p>Volunteers tutored children from low-income families, improving literacy and academic performance.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Testimonials Section -->
+      <div class="testimonials-section">
+        <h2>What Volunteers Say About Us</h2>
+        <div class="row mt-4">
+          <div class="col-md-4">
+            <div class="testimonial">
+              <p><strong>Farah</strong></p>
+              <p>"HandsConnect made it so easy to find volunteering opportunities! I participated in a local food drive and met amazing people."</p>
+              <div class="stars">★★★★★</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="testimonial">
+              <p><strong>Samer</strong></p>
+              <p>"I love how simple it is to apply for opportunities. The platform is user-friendly and encourages more people to volunteer!"</p>
+              <div class="stars">★★★★☆</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="testimonial">
+              <p><strong>Leen</strong></p>
+              <p>"Through HandsConnect, I was able to join an education program for underprivileged kids. It was a rewarding experience!"</p>
+              <div class="stars">★★★★★</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+
+    <!-- Footer -->
+    <div class="footer mt-5">
+      <p>Follow us on <a href="https://instagram.com/handsconnect" target="_blank">Instagram</a></p>
+      <p>Contact us: <a href="mailto:handsconnect01@gmail.com">handsconnect01@gmail.com</a></p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

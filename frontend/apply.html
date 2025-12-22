@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Opportunity</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Use the same CSS as the main page -->
+</head>
+<body>
+    <div class="container">
+        <h2>Apply for Opportunity</h2>
+        <form id="applicationForm">
+            <input type="hidden" id="opportunityId">
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="text" id="phone" class="form-control" required>
+            </div>
+            <button type="button" class="btn btn-success" onclick="applyForOpportunity()">Apply</button>
+            <button type="button" class="btn btn-secondary" onclick="cancelApplication()">Cancel</button>
+        </form>
+    </div>
+
+    <script src="apply.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+body {
+    background: linear-gradient(white, #41d6d4);
+    color: #000;
+    font-family: 'Arial', sans-serif;
+    min-height: 100vh;
+}
+.navbar {
+    background-color: #41d6d4;
+    padding: 10px 20px;
+}
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    color: white;
+}
+.navbar-brand img {
+    width: 40px;
+    height: auto;
+    margin-right: 10px;
+}
+.navbar-nav a {
+    color: white;
+    font-weight: bold;
+    margin: 0 10px;
+    font-size: 1rem;
+}
+.navbar-nav a:hover {
+    color: #cfe7e7;
+    text-decoration: none;
+}
+.dashboard-content {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.section-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #10c8c8;
+    margin-bottom: 15px;
+}
+.footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #4dbbb9;
+    color: white;
+    margin-top: 20px;
+    border-radius: 5px 5px 0 0;
+}
+.btn-primary {
+    background-color: #41d6d4;
+    border: none;
+    border-radius: 8px;
+}
+
+.btn-primary:hover {
+    background-color: #36b3b0;
+}
+
+.btn-info {
+    background-color: #41d6d4;
+    border: none;
+    border-radius: 8px;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #36b3b0;
+}
+

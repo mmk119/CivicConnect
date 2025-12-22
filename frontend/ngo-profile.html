@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGO Profile - HANDSCONNECT</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="profileStyle.css">
+</head>
+<body>
+  <!-- Hidden profile link if needed -->
+  <a id="profile-link" href="#" style="display: none;"></a>
+  
+  <div class="content-wrapper">
+    <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
+    <h2>NGO Profile</h2>
+    <p>Manage and update your NGO details.</p>
+    
+    <div class="card profile-card shadow-lg">
+      <div class="text-center">
+        <!-- NGO logo (display current or default) -->
+        <img id="ngo-logo" src="defaultNgoLogo.jpg" alt="NGO Logo" class="profile-img">
+        <!-- File input to upload a new logo -->
+        <input type="file" id="upload-ngo-logo" class="form-control mt-2">
+      </div>
+      
+      <div class="card-body">
+        <h4 id="ngo-name">NGO Name</h4>
+        <p><strong>Email:</strong> <span id="ngo-email">ngo@example.com</span></p>
+        <p><strong>Description:</strong> <span id="ngo-description">NGO description goes here.</span></p>
+        <p><strong>Address:</strong> <span id="ngo-address">NGO address goes here.</span></p>
+        
+        <!-- Edit NGO Profile Button -->
+        <button id="edit-ngo-btn" class="btn btn-primary w-100 mt-3">Edit NGO Profile</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Include the NGO Profile JavaScript -->
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert("Please login first!");
+        window.location.href = "login.html";
+        return;
+      }
+      
+      // Decode token to extract NGO ID
+      let ngoId;
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        ngoId = payload.ngo_id;
+        if (!ngoId) {
+          alert("NGO ID not found. Please log in again.");
+          window.location.href = "login.html";
+          return;
+        }
+      } catch (error) {
+        console.error("Error decoding token:", error);
+        alert("Invalid session. Please log in again.");
+        localStorage.removeItem("token");
+        window.location.href = "login.html";
+        return;
+      }
+      
+      // Function to fetch and display NGO profile data
+      async function fetchNgoProfile() {
+        try {
+          const response = await fetch(`/api/ngo-profile?ngo_id=${ngoId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log("NGO profile data:", data);
+          
+          document.getElementById("ngo-name").textContent = data.name || "NGO Name";
+          document.getElementById("ngo-email").textContent = data.email || "ngo@example.com";
+          document.getElementById("ngo-description").textContent = data.description || "No description provided.";
+          document.getElementById("ngo-address").textContent = data.address || "No address provided.";
+          document.getElementById("ngo-logo").src = data.logo;
+          
+        } catch (error) {
+          console.error("NGO profile fetch error:", error);
+          alert("Failed to load NGO profile. Please try again later.");
+        }
+      }
+      
+      // Fetch profile on load
+      await fetchNgoProfile();
+      
+      // Handle logo upload
+      const uploadLogoInput = document.getElementById("upload-ngo-logo");
+      uploadLogoInput.addEventListener("change", async function () {
+        const file = uploadLogoInput.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+          alert("Please upload a valid image file.");
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append("ngoLogo", file);
+        
+        try {
+          const response = await fetch("/api/upload-ngo-logo", {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+          
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || "Logo upload failed");
+          }
+          
+          document.getElementById("ngo-logo").src = data.logo;  // Update logo on page
+          uploadLogoInput.value = "";  // Clear input
+          alert("NGO logo updated successfully!");
+          
+        } catch (error) {
+          console.error("Logo upload error:", error);
+          alert(error.message || "Failed to upload logo.");
+        }
+      });
+      
+      // Handle editing the NGO profile, keeping the email non-editable
+      document.getElementById("edit-ngo-btn").addEventListener("click", async function () {
+        // Retrieve current values from the DOM
+        const currentName = document.getElementById("ngo-name").textContent;
+        const currentEmail = document.getElementById("ngo-email").textContent; // Email remains unchanged
+        const currentDescription = document.getElementById("ngo-description").textContent;
+        const currentAddress = document.getElementById("ngo-address").textContent;
+        
+        // Use prompts for updating fields, except email which remains unchanged
+        const newName = prompt("Enter NGO name:", currentName) || currentName;
+        // Email is not editable so we reuse the current value.
+        const newDescription = prompt("Enter NGO description:", currentDescription) || currentDescription;
+        const newAddress = prompt("Enter NGO address:", currentAddress) || currentAddress;
+        
+        const updatedNgoProfile = {
+          name: newName,
+          email: currentEmail, // Retain current email
+          description: newDescription,
+          address: newAddress
+        };
+        
+        try {
+          const response = await fetch("/api/update-ngo-profile", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedNgoProfile)
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Update failed");
+          }
+          
+          await fetchNgoProfile(); // Refresh profile info
+          alert("NGO profile updated successfully!");
+        } catch (error) {
+          console.error("Update error:", error);
+          alert(error.message || "Failed to update NGO profile");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
