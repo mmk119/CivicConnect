@@ -1161,5 +1161,3 @@ app.post('/api/upload-profile-picture',
         }
     }
 );
-
-
