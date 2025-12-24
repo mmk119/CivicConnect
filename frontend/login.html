@@ -1,142 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - HANDSCONNECT</title>
+    <title>Login | CivicConnect</title>
 
+    <!-- Bootstrap (utilities only) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        html,
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(white, #41d6d4);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #e9fbfb, #9fe7e5);
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+        }
+
+        /* Match Reset Password width */
+        .auth-card {
+            max-width: 560px;
+            width: 100%;
+            padding: 26px 36px;
+            border-radius: 22px;
+            background: #fafaf9;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.14);
             text-align: center;
         }
 
-        .content-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex-grow: 1;
-            width: 100%;
-            padding-bottom: 40px;
-        }
-
-        .card {
-            max-width: 380px;
-            width: 100%;
-            padding: 30px;
-            border-radius: 15px;
-            background: #fff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
         .logo {
-            width: 200px;
-            margin-bottom: 20px;
+            width: 120px;
+            margin-bottom: 14px;
+        }
+
+        h3 {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #1f1f1f;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 16px;
         }
 
         .form-label {
-            font-weight: bold;
-            color: black;
-            text-align: left;
+            font-weight: 500;
+            color: #2b2b2b;
+            margin-bottom: 6px;
         }
 
         .form-control {
-            border-radius: 8px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            color: black;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            font-size: 15px;
         }
 
-        .btn-primary {
-            background-color: #41d6d4;
+        .form-control:focus {
+            border-color: #0fb9b1;
+            box-shadow: 0 0 0 2px rgba(15, 185, 177, 0.25);
+        }
+
+        .primary-btn {
+            margin-top: 10px;
+            background: linear-gradient(135deg, #0fb9b1, #3ddbd9);
+            color: #fff;
             border: none;
-            border-radius: 8px;
-            padding: 10px;
+            border-radius: 14px;
+            padding: 14px;
             font-size: 16px;
+            font-weight: 600;
             width: 100%;
+            transition: all 0.25s ease;
         }
 
-        .btn-primary:hover {
-            background-color: #36b3b0;
+        .primary-btn:hover {
+            background: linear-gradient(135deg, #0aa39c, #2ecbc8);
+            transform: translateY(-1px);
         }
 
-        .text-center a {
-            color: #41d6d4;
+        .link {
+            color: #0fb9b1;
             text-decoration: none;
+            font-weight: 500;
         }
 
-        .text-center a:hover {
+        .link:hover {
             text-decoration: underline;
+        }
+
+        .text-danger {
+            font-size: 13px;
+            margin-top: 4px;
         }
     </style>
 </head>
 
 <body>
-    <div class="content-wrapper">
-        <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
-        <h2>Welcome Back to HANDSCONNECT</h2>
-        <p>Sign in to continue your journey.</p>
 
-        <div class="card shadow-lg">
-            <h4 class="text-center">Login</h4>
+    <div class="auth-card">
+        <img src="logo.png" alt="CivicConnect Logo" class="logo">
 
-            <form id="loginForm">
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
-                    <div class="text-danger small" id="emailError"></div>
-                </div>
+        <h3>Welcome Back</h3>
+        <p class="subtitle">Sign in to continue your journey.</p>
 
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" placeholder="Enter password" required>
-                    <div class="text-danger small" id="passwordError"></div>
-                </div>
+        <form id="loginForm" novalidate>
+            <div class="mb-3 text-start">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
+                <div class="text-danger" id="emailError"></div>
+            </div>
 
-                <button type="submit" class="btn btn-primary w-100">Login</button>
+            <div class="mb-3 text-start">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+                <div class="text-danger" id="passwordError"></div>
+            </div>
 
-                <div class="text-center mt-3">
-                    <a href="forgot-password.html" class="btn btn-link">Forgot Password?</a>
-                </div>
+            <button type="submit" class="primary-btn">
+                Login
+            </button>
 
-                <div class="text-center mt-2">
-                    <span>Don't have an account? <a href="register.html">Sign Up</a></span>
-                </div>
-            </form>
-        </div>
+            <div class="text-center mt-3">
+                <a href="forgot-password.html" class="link">Forgot Password?</a>
+            </div>
+
+            <div class="text-center mt-2">
+                <span>Don't have an account? <a href="register.html" class="link">Sign Up</a></span>
+            </div>
+        </form>
     </div>
 
     <script>
         document.getElementById("loginForm").addEventListener("submit", function (event) {
             event.preventDefault();
 
-            let email = document.getElementById("email").value.trim();
-            let password = document.getElementById("password").value;
-            let emailError = document.getElementById("emailError");
-            let passwordError = document.getElementById("passwordError");
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            const emailError = document.getElementById("emailError");
+            const passwordError = document.getElementById("passwordError");
 
             emailError.textContent = "";
             passwordError.textContent = "";
 
-            let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailPattern.test(email)) {
-                emailError.textContent = "Invalid email format (user@domain.com)";
+                emailError.textContent = "Invalid email format.";
                 return;
             }
+
             if (password.length < 8) {
                 passwordError.textContent = "Password must be at least 8 characters.";
                 return;
@@ -147,31 +164,26 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             })
-                .then(response => response.json())
-                .then(data => {
-    console.log("Login Response:", data); // Debugging
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    emailError.textContent = data.error;
+                    return;
+                }
 
-    if (data.error) {
-        emailError.textContent = data.error;
-        return; // Stop further execution if there's an error
-    } else if (data.token && data.user && data.user.id) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user_id", data.user.id);
-        localStorage.setItem('ngo_id', data.user.ngo_id);
-        alert("Login successful! Redirecting...");
-        window.location.href = data.redirect; // Redirect after login
-    } else {
-        alert("Invalid credentials or missing token/user_id");
-    }
-})
-.catch(error => {
-    emailError.textContent = "Login failed. Try again.";
-});
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user_id", data.user.id);
+                if (data.user.ngo_id) {
+                    localStorage.setItem("ngo_id", data.user.ngo_id);
+                }
 
-
+                window.location.href = data.redirect || "dashboard.html";
+            })
+            .catch(() => {
+                emailError.textContent = "Login failed. Please try again.";
+            });
         });
-
     </script>
-</body>
 
+</body>
 </html>

@@ -1,63 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Register - HANDSCONNECT</title>
+    <title>Register | CivicConnect</title>
+
+    <!-- Bootstrap utilities only -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <style>
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
-            overflow-x: hidden;
-            background: linear-gradient(white, #41d6d4);
-        }
-
-        .welcome-container {
-            height: auto;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #e9fbfb, #9fe7e5);
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            text-align: center;
+            min-height: 100vh;
         }
 
-        .info-section {
-            color: white;
-            padding: 80px 20px;
-            text-align: center;
-            position: relative;
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-
-        .info-section.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .card {
-            max-width: 380px;
+        .auth-card {
+            max-width: 460px;
             width: 100%;
-            padding: 30px;
-            border-radius: 15px;
-            background: #fff;
-            margin: 20px auto;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transition: box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            padding: 30px 34px;
+            border-radius: 22px;
+            background: #ffffff;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.15);
         }
 
         .logo {
-            width: 500px;
-            margin-bottom: 20px;
+            width: 140px;
+            display: block;
+            margin: 0 auto 14px;
+        }
+
+        h3 {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #1f1f1f;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 13.5px;
+            color: #555;
+            margin-bottom: 22px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #2b2b2b;
+        }
+
+        .form-control {
+            padding: 13px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
+
+        .form-control:focus {
+            border-color: #0fb9b1;
+            box-shadow: 0 0 0 2px rgba(15, 185, 177, 0.25);
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, #0fb9b1, #3ddbd9);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .secondary-btn {
+            background: #f1f1f1;
+            border: none;
+            border-radius: 14px;
+            padding: 14px;
+            width: 100%;
+            margin-top: 10px;
         }
 
         .stage {
@@ -68,341 +94,198 @@
             display: block;
         }
 
-        .form-label {
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: black;
-            text-align: left;
-        }
-
-        .form-control {
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            transition: border-color 0.3s ease;
-            color: black;
-        }
-
-        .form-control:focus {
-            border-color: #41d6d4;
-            outline: none;
-        }
-
-        .btn-primary,
-        .btn-secondary,
-        .btn-success {
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 16px;
-            width: 100%;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-primary {
-            background-color: #41d6d4;
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background-color: #36b3b0;
-        }
-
-        .btn-secondary {
-            background-color: #f1f1f1;
-            border: none;
-        }
-
-        .btn-secondary:hover {
-            background-color: #e0e0e0;
-        }
-
-        .btn-success {
-            background-color: #28a745;
-            border: none;
-        }
-
-        .btn-success:hover {
-            background-color: #218838;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
+        .form-control-wrapper {
+            position: relative;
         }
 
         .password-eye {
             position: absolute;
-            right: 20px;
-            top: 10px;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
             cursor: pointer;
-            z-index: 2;
-        }
-
-        .form-control-wrapper {
-            position: relative;
         }
     </style>
 </head>
 
 <body>
-    <div class="welcome-container">
-        <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
-        <h2>Welcome to HANDSCONNECT</h2>
-        <p>Your gateway to volunteering and NGO collaborations.</p>
-    </div>
 
-    <div class="card shadow-lg">
-        <h4 class="text-center">Register</h4>
-        <form id="registrationForm">
-            <div id="stage1" class="stage active">
-                <label class="form-label">Register As</label>
-                <select class="form-control" id="role" required>
-                    <option value="">Select Role</option>
-                    <option value="Volunteer">Volunteer</option>
-                    <option value="NGO">NGO</option>
-                </select>
-                <button type="button" class="btn btn-primary w-100 mt-3" onclick="nextStage(2)">Next</button>
+<div class="auth-card">
+
+    <img src="logo.png" class="logo" alt="CivicConnect Logo">
+
+    <h3>Create an Account</h3>
+    <p class="subtitle">Join CivicConnect and start making an impact.</p>
+
+    <form id="registrationForm">
+
+        <!-- STAGE 1 -->
+        <div id="stage1" class="stage active">
+            <label class="form-label">Register As</label>
+            <select class="form-control" id="role" required>
+                <option value="">Select Role</option>
+                <option value="Volunteer">Volunteer</option>
+                <option value="NGO">NGO</option>
+            </select>
+
+            <button type="button" class="primary-btn" onclick="nextStage(2)">Next</button>
+        </div>
+
+        <!-- STAGE 2 -->
+        <div id="stage2" class="stage">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control mb-2" id="name" required>
+
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control mb-2" id="email" required>
+
+            <label class="form-label">Password</label>
+            <div class="form-control-wrapper mb-2">
+                <input type="password" class="form-control" id="password" required>
+                <span class="password-eye" onclick="togglePasswordVisibility()">👁</span>
             </div>
 
-            <div id="stage2" class="stage">
-                <label class="form-label">Full Name</label>
-                <input type="text" class="form-control" id="name" required>
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" required>
-                <label class="form-label">Password</label>
-                <div class="form-control-wrapper">
-                    <input type="password" class="form-control" id="password" required>
-                    <span class="password-eye" onclick="togglePasswordVisibility()">👁️</span>
-                </div>
-                <label class="form-label">Confirm Password</label>
-                <input type="password" class="form-control" id="confirmPassword" required>
-                <button type="button" class="btn btn-secondary w-100 mt-3" onclick="prevStage(1)">Back</button>
-                <button type="button" class="btn btn-primary w-100 mt-3" onclick="nextStage(3)">Next</button>
+            <label class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" id="confirmPassword" required>
+
+            <button type="button" class="secondary-btn" onclick="prevStage(1)">Back</button>
+            <button type="button" class="primary-btn" onclick="nextStage(3)">Next</button>
+        </div>
+
+        <!-- STAGE 3 -->
+        <div id="stage3" class="stage">
+
+            <!-- Volunteer -->
+            <div id="volunteerFields">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" class="form-control mb-2" id="dob">
+
+                <label class="form-label">City</label>
+                <input type="text" class="form-control mb-2" id="city">
+
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control mb-2" id="phone">
+
+                <label class="form-label">Skills</label>
+                <textarea class="form-control mb-2" id="skills"></textarea>
             </div>
 
-            <div id="stage3" class="stage">
-                <!-- Volunteer Fields -->
-                <div id="volunteerFields">
-                    <label class="form-label">Date of Birth</label>
-                    <input type="date" class="form-control" id="dob">
-                    <label class="form-label">City</label>
-                    <input type="text" class="form-control" id="city">
-                    <label class="form-label">Phone</label>
-                    <input type="tel" class="form-control" id="phone">
-                    <label class="form-label">Skills</label>
-                    <textarea class="form-control" id="skills"></textarea>
-                </div>
+            <!-- NGO -->
+            <div id="ngoFields">
+                <label class="form-label">NGO Name</label>
+                <input type="text" class="form-control mb-2" id="ngoName">
 
-                <!-- NGO Fields -->
-                <div id="ngoFields">
-                    <label class="form-label">NGO Name</label>
-                    <input type="text" class="form-control" id="ngoName">
-                    <label class="form-label">NGO Description</label>
-                    <textarea class="form-control" id="ngoDescription"></textarea>
-                    <label class="form-label">NGO Address</label>
-                    <input type="text" class="form-control" id="ngoAddress">
-                </div>
+                <label class="form-label">NGO Description</label>
+                <textarea class="form-control mb-2" id="ngoDescription"></textarea>
 
-                <button type="button" class="btn btn-secondary w-100 mt-3" onclick="prevStage(2)">Back</button>
-                <button type="submit" class="btn btn-success w-100 mt-3">Register</button>
+                <label class="form-label">NGO Address</label>
+                <input type="text" class="form-control mb-2" id="ngoAddress">
             </div>
-    </div>
+
+            <button type="button" class="secondary-btn" onclick="prevStage(2)">Back</button>
+            <button type="submit" class="primary-btn">Create Account</button>
+        </div>
+
     </form>
-    </div>
+</div>
 
-    <div class="info-section" id="infoSection">
-        <h2>What is HANDSCONNECT?</h2>
-        <p>HANDSCONNECT is the platform that brings volunteers and NGOs together to create meaningful collaborations and
-            make a real impact around the world.</p>
-    </div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        showStage(1);
+    });
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            document.querySelectorAll('.stage').forEach(s => s.style.display = 'none');
-            document.getElementById('stage1').style.display = 'block';
+    function showStage(stage) {
+        document.querySelectorAll('.stage').forEach(s => {
+            s.classList.remove('active');
         });
-        
-        window.addEventListener('scroll', function () {
-            const infoSection = document.getElementById('infoSection');
-            if (window.scrollY > 100) {
-                infoSection.classList.add('visible');
-            }
+        document.getElementById(`stage${stage}`).classList.add('active');
+        updateRoleFields();
+    }
+
+    function nextStage(stage) {
+        showStage(stage);
+    }
+
+    function prevStage(stage) {
+        showStage(stage);
+    }
+
+    function updateRoleFields() {
+        const role = document.getElementById('role').value;
+        document.getElementById('volunteerFields').style.display = role === 'Volunteer' ? 'block' : 'none';
+        document.getElementById('ngoFields').style.display = role === 'NGO' ? 'block' : 'none';
+    }
+
+    document.getElementById('role').addEventListener('change', updateRoleFields);
+
+    function togglePasswordVisibility() {
+        ['password', 'confirmPassword'].forEach(id => {
+            const field = document.getElementById(id);
+            field.type = field.type === "password" ? "text" : "password";
         });
-        
-        function nextStage(stage) {
-            // Clear previous validation
-            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        
-            // Validate current stage
-            let valid = true;
-            const currentStage = document.querySelector('.stage.active');
-        
-            currentStage.querySelectorAll('input, select, textarea').forEach(input => {
-                if (input.required && !input.value.trim()) {
-                    valid = false;
-                    input.classList.add('is-invalid');
-                }
-            });
-        
-            if (!valid) return;
-        
-            // Hide all stages
-            document.querySelectorAll('.stage').forEach(s => {
-                s.classList.remove('active');
-                s.style.display = 'none';
-            });
-        
-            // Show new stage
-            const nextStageElement = document.getElementById(`stage${stage}`);
-            nextStageElement.classList.add('active');
-            nextStageElement.style.display = 'block';
-        
-            // Update required attributes based on role
-            updateRequiredFields();
+    }
+
+    document.getElementById("registrationForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const role = document.getElementById('role').value;
+
+        const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            alert("Password must contain 8+ chars, uppercase, lowercase, and number.");
+            return;
         }
-        
-        function prevStage(stage) {
-            // Hide all stages
-            document.querySelectorAll('.stage').forEach(s => {
-                s.classList.remove('active');
-                s.style.display = 'none';
-            });
-        
-            // Show previous stage
-            const prevStageElement = document.getElementById(`stage${stage}`);
-            prevStageElement.classList.add('active');
-            prevStageElement.style.display = 'block';
-        
-            // Update required attributes
-            updateRequiredFields();
+
+        if (password !== confirmPassword) {
+            alert("Passwords do not match.");
+            return;
         }
-        
-        function updateRequiredFields() {
-            const role = document.getElementById('role').value;
-            const isStage3 = document.getElementById('stage3').classList.contains('active');
-        
-            // Only update requirements if in stage 3
-            if (isStage3) {
-                document.getElementById('dob').required = role === 'Volunteer';
-                document.getElementById('city').required = role === 'Volunteer';
-                document.getElementById('ngoName').required = role === 'NGO';
-                document.getElementById('ngoDescription').required = role === 'NGO';
-                document.getElementById('ngoAddress').required = role === 'NGO';
-            }
-        
-            // Toggle visibility
-            document.getElementById('volunteerFields').style.display = role === 'Volunteer' ? 'block' : 'none';
-            document.getElementById('ngoFields').style.display = role === 'NGO' ? 'block' : 'none';
+
+        if (!role) {
+            alert("Please select a role.");
+            return;
         }
-        
-        document.getElementById('role').addEventListener('change', function () {
-            const role = this.value;
-            updateRequiredFields();
-            
-            // Clear hidden fields
-            if (role === 'Volunteer') {
-                document.querySelectorAll('#ngoFields input, #ngoFields textarea').forEach(field => field.value = '');
-            } else {
-                document.querySelectorAll('#volunteerFields input, #volunteerFields textarea').forEach(field => field.value = '');
-            }
-        });
-        
-        function togglePasswordVisibility() {
-            const passwordField = document.getElementById('password');
-            const confirmPasswordField = document.getElementById('confirmPassword');
-            passwordField.type = passwordField.type === "password" ? "text" : "password";
-            confirmPasswordField.type = confirmPasswordField.type === "password" ? "text" : "password";
-        }
-        
-        document.getElementById("registrationForm").addEventListener("submit", async function (event) {
-            event.preventDefault();
-        
-            // Password validation
-            const password = document.getElementById('password').value;
-            const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
-            if (!passwordRegex.test(password)) {
-                alert("Password must contain:\n- 8+ characters\n- 1 uppercase\n- 1 lowercase\n- 1 number");
-                return;
-            }
-        
-            // Confirm password match
-            if (password !== document.getElementById('confirmPassword').value) {
-                alert("Passwords do not match!");
-                return;
-            }
-        
-            // Role validation
-            const role = document.getElementById('role').value;
-            if (!role) {
-                alert("Please select a role!");
-                return;
-            }
-        
-            // Build form data
-            const formData = {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                password: password,
-                role: role
+
+        const formData = {
+            name: document.getElementById('name').value,
+            email: document.getElementById('email').value,
+            password,
+            role
+        };
+
+        if (role === 'Volunteer') {
+            formData.volunteer = {
+                dob: document.getElementById('dob').value,
+                city: document.getElementById('city').value,
+                phone: document.getElementById('phone').value || null,
+                skills: document.getElementById('skills').value || null
             };
-        
-            // Add role-specific data
-            if (role === 'Volunteer') {
-                formData.volunteer = {
-                    dob: document.getElementById('dob').value,
-                    city: document.getElementById('city').value,
-                    phone: document.getElementById('phone').value || null,
-                    skills: document.getElementById('skills').value || null
-                };
-                
-                // Volunteer field validation
-                if (!formData.volunteer.dob || !formData.volunteer.city) {
-                    alert("Please fill in all required volunteer fields");
-                    return;
-                }
-            } 
-            else if (role === 'NGO') {
-                formData.ngo = {
-                    name: document.getElementById('ngoName').value,
-                    description: document.getElementById('ngoDescription').value,
-                    address: document.getElementById('ngoAddress').value
-                };
-                
-                // NGO field validation
-                if (!formData.ngo.name || !formData.ngo.description || !formData.ngo.address) {
-                    alert("Please fill in all required NGO fields");
-                    return;
-                }
-            }
-        
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(formData)
-                });
-        
-                const responseText = await response.text();
-                const data = responseText ? JSON.parse(responseText) : {};
-        
-                if (!response.ok) {
-                    throw new Error(data.error || `HTTP error! Status: ${response.status}`);
-                }
-        
-                alert('Registration successful!');
-                window.location.href = 'login.html';
-            } catch (error) {
-                console.error('Registration error:', error);
-                alert(`Registration failed: ${error.message}`);
-            }
-        });
-        </script>
-</body>
+        } else {
+            formData.ngo = {
+                name: document.getElementById('ngoName').value,
+                description: document.getElementById('ngoDescription').value,
+                address: document.getElementById('ngoAddress').value
+            };
+        }
 
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) throw new Error("Registration failed");
+
+            alert("Registration successful!");
+            window.location.href = "login.html";
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+</script>
+
+</body>
 </html>
