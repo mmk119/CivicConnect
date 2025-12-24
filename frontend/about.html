@@ -3,43 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>About Us - HandsConnect</title>
+  <title>About Us - CivicConnect</title>
   <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-  <!-- Google Fonts: Roboto for a modern, clean look -->
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css">
+  <!-- AOS CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+  <!-- Swiper CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.css">
+
   <style>
-    /* Global Styles */
     body {
       font-family: 'Roboto', sans-serif;
       background: url('handinhand.jpeg') no-repeat center center fixed;
       background-size: cover;
-      position: relative;
       margin: 0;
       padding-top: 80px;
-      color: #f8f9fa; /* Lighter text for contrast */
-      text-align: center;
+      color: #f8f9fa;
+      overflow-x: hidden;
     }
-    
-    /* Refined overlay with gradient effect */
+
     .overlay {
-      background: linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0.65));
+      background: rgba(0,0,0,0.7);
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       z-index: -1;
     }
-    
-    /* Enhanced Navbar Styling */
+
     .navbar {
-      background: linear-gradient(90deg, #0062E6, #33AEFF);
+      background: linear-gradient(90deg, #007BFF, #0056b3);
       padding: 15px 30px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-      transition: background 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+      backdrop-filter: blur(10px);
     }
-    
+
     .navbar-brand {
       font-weight: 700;
       font-size: 1.6rem;
@@ -47,209 +48,485 @@
       align-items: center;
       transition: transform 0.3s ease;
     }
-    
+
+    .navbar-brand:hover {
+      transform: scale(1.05);
+    }
+
     .navbar-brand img {
       height: 45px;
       margin-right: 10px;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    
-    .navbar-brand:hover img {
-      transform: scale(1.05);
-    }
-    
-    /* Main content container styling with fade-in animation */
-    .container-content {
-      background: rgba(0, 0, 0, 0.75);
-      padding: 40px 30px;
+
+    .hero {
+      text-align: center;
+      padding: 100px 20px;
+      background: rgba(0,0,0,0.6);
       border-radius: 12px;
-      display: inline-block;
-      margin-top: 50px;
-      width: 90%;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-      animation: fadeInUp 1s ease-out;
+      margin: 40px auto;
+      max-width: 900px;
+      animation: fadeInUp 1s ease-out, pulse 2s infinite;
+      position: relative;
     }
-    
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: -5px;
+      right: -5px;
+      bottom: -5px;
+      background: #007BFF;
+      border-radius: 12px;
+      z-index: -1;
+      opacity: 0.7;
     }
-    
-    /* Headings and text */
-    h1 {
-      font-size: 2.8rem;
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
       margin-bottom: 20px;
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     }
-    
+
+    .hero p {
+      font-size: 1.2rem;
+      color: #d1e9ff;
+      animation: bounceIn 1.5s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.3); }
+      50% { opacity: 1; transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .section {
+      background: rgba(0,0,0,0.75);
+      padding: 50px 30px;
+      border-radius: 12px;
+      margin: 40px auto;
+      max-width: 1000px;
+      text-align: center;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.05);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .section:hover::before {
+      opacity: 1;
+    }
+
+    .section:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+    }
+
     h2 {
       font-size: 2rem;
       margin-bottom: 25px;
       font-weight: 700;
+      color: #FF6B00;
+      position: relative;
     }
-    
+
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 3px;
+      background: #007BFF;
+      border-radius: 2px;
+    }
+
     p {
       font-size: 1.1rem;
       line-height: 1.6;
-      margin-bottom: 20px;
     }
-    
-    /* Activity and Testimonial Cards */
-    .activity, .testimonial {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 15px;
+
+    /* Activity Cards */
+    .activity {
+      background: #fff;
+      color: #333;
+      border-radius: 12px;
+      padding: 20px;
       margin-bottom: 20px;
       transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
     }
-    
-    .activity:hover, .testimonial:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+
+    .activity::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,123,255,0.05);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
-    
+
+    .activity:hover::before {
+      opacity: 1;
+    }
+
+    .activity:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+    }
+
     .activity img {
       width: 100%;
       height: 200px;
       object-fit: cover;
       border-radius: 10px;
+      margin-bottom: 15px;
+      transition: transform 0.3s ease;
+    }
+
+    .activity:hover img {
+      transform: scale(1.05);
+    }
+
+    /* Testimonials */
+    .testimonial {
+      background: #fff;
+      color: #333;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+    }
+
+    .testimonial::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(40,167,69,0.05);
+      opacity: 0;
       transition: opacity 0.3s ease;
     }
-    
-    .activity img:hover {
-      opacity: 0.9;
+
+    .testimonial:hover::before {
+      opacity: 1;
     }
-    
-    /* Stars rating for testimonials */
+
+    .testimonial:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+    }
+
     .stars {
       color: gold;
       font-size: 1.5rem;
-      margin-top: 5px;
+      margin-top: 10px;
     }
-    
-    /* Footer Styling */
+
+    /* Footer */
     .footer {
       margin-top: 30px;
       padding: 20px;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0,0,0,0.75);
       border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      text-align: center;
+      backdrop-filter: blur(5px);
     }
-    
+
     .footer a {
-      color: #17a2b8;
+      color: #33AEFF;
       font-weight: bold;
       text-decoration: none;
-      transition: color 0.3s ease, text-decoration 0.3s ease;
+      transition: color 0.3s ease;
     }
-    
+
     .footer a:hover {
       text-decoration: underline;
-      color: #1ab5cc;
+      color: #FF6B00;
     }
-    
-    /* Spacing for sections */
-    .activities-section, .testimonials-section {
-      margin-top: 40px;
+
+    /* Scroll animations */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
     }
-    
-    /* Responsive Adjustments */
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Back to top button */
+    #backToTop {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 1000;
+    }
+
+    #backToTop.show {
+      opacity: 1;
+    }
+
+    #backToTop:hover {
+      transform: scale(1.1);
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-      .container-content {
-        width: 100%;
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+
+      .section {
         padding: 30px 20px;
+      }
+
+      .activity, .testimonial {
+        margin-bottom: 15px;
       }
     }
   </style>
 </head>
 <body>
-
   <div class="overlay"></div>
 
+  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
     <div class="container">
       <a class="navbar-brand" href="landingpage.html">
-        Home
+        <img src="logo.png" alt="CivicConnect Logo">
+        CivicConnect
       </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="landingpage.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="opportunities.html">Opportunities</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="about.html">About Us</a>
+          </li>
+        </ul>
+      </div>
     </div>
   </nav>
 
-  <div class="container mt-5">
-    <div class="container-content">
-      <h1>About HandsConnect</h1>
-      <p>
-        At HandsConnect, we believe that making a difference should be simple. Designed with purpose and passion, our platform bridges the gap between non-governmental organizations (NGOs) and compassionate individuals—students, locals, and changemakers—who are ready to give their time and talents to causes that matter. Unlike complex platforms that get in the way, HandsConnect brings volunteering to your fingertips. NGOs can easily post opportunities, and volunteers can discover and apply for roles that match their interests—all in one place. It's not just about connecting hands—it's about building communities.
-      </p>
-      
-      <!-- Activities Section -->
-      <div class="activities-section">
-        <h2>Some Activities Which Took Place via Our Website</h2>
-        <div class="row mt-4">
-          <div class="col-md-4">
-            <div class="activity">
-              <img src="activity1.jpeg" alt="Community Cleanup">
-              <p><strong>Community Cleanup Drive</strong></p>
-              <p>Volunteers gathered to clean parks and public spaces, promoting environmental awareness.</p>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="activity">
-              <img src="activity2.jpeg" alt="Food Distribution">
-              <p><strong>Food Distribution for the Needy</strong></p>
-              <p>NGO partnerships provided meals to underprivileged communities, benefiting hundreds of people.</p>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="activity">
-              <img src="activity3.jpeg" alt="Education Program">
-              <p><strong>Education Support for Children</strong></p>
-              <p>Volunteers tutored children from low-income families, improving literacy and academic performance.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Testimonials Section -->
-      <div class="testimonials-section">
-        <h2>What Volunteers Say About Us</h2>
-        <div class="row mt-4">
-          <div class="col-md-4">
-            <div class="testimonial">
-              <p><strong>Farah</strong></p>
-              <p>"HandsConnect made it so easy to find volunteering opportunities! I participated in a local food drive and met amazing people."</p>
-              <div class="stars">★★★★★</div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="testimonial">
-              <p><strong>Samer</strong></p>
-              <p>"I love how simple it is to apply for opportunities. The platform is user-friendly and encourages more people to volunteer!"</p>
-              <div class="stars">★★★★☆</div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="testimonial">
-              <p><strong>Leen</strong></p>
-              <p>"Through HandsConnect, I was able to join an education program for underprivileged kids. It was a rewarding experience!"</p>
-              <div class="stars">★★★★★</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-    </div>
+  <!-- Hero Section -->
+  <div class="hero">
+    <h1>About CivicConnect</h1>
+    <p>🌍 Connecting NGOs and Volunteers for a Better Tomorrow</p>
+  </div>
 
-    <!-- Footer -->
-    <div class="footer mt-5">
-      <p>Follow us on <a href="https://instagram.com/handsconnect" target="_blank">Instagram</a></p>
-      <p>Contact us: <a href="mailto:handsconnect01@gmail.com">handsconnect01@gmail.com</a></p>
+  <!-- Mission Section -->
+  <div class="section fade-in">
+    <h2>Our Mission</h2>
+    <p>At CivicConnect, we believe making a difference should be simple. Our platform bridges NGOs and compassionate individuals—students, locals, and changemakers—ready to give their time and talents to causes that matter. NGOs can post opportunities, and volunteers can discover roles that match their interests—all in one place. It's not just about connecting hands, it's about building communities. 🤝</p>
+  </div>
+
+  <!-- Activities Section -->
+  <div class="section fade-in">
+    <h2>Some Activities via CivicConnect</h2>
+    <div class="swiper activity-swiper">
+      <div class="swiper-wrapper">
+        <div class="swiper-slide">
+          <div class="activity" tabindex="0">
+            <img src="activity1.jpeg" alt="Community Cleanup">
+            <h5>🧹 Community Cleanup Drive</h5>
+            <p>Volunteers gathered to clean parks and public spaces, promoting environmental awareness.</p>
+          </div>
+        </div>
+        <div class="swiper-slide">
+          <div class="activity" tabindex="0">
+            <img src="activity2.jpeg" alt="Food Distribution">
+            <h5>🍲 Food Distribution</h5>
+            <p>NGO partnerships provided meals to underprivileged communities, benefiting hundreds of people.</p>
+          </div>
+        </div>
+        <div class="swiper-slide">
+          <div class="activity" tabindex="0">
+            <img src="activity3.jpeg" alt="Education Program">
+            <h5>📚 Education Support</h5>
+            <p>Volunteers tutored children from low-income families, improving literacy and academic performance.</p>
+          </div>
+        </div>
+      </div>
+      <div class="activity-pagination swiper-pagination"></div>
+      <div class="activity-button-next swiper-button-next" role="button" aria-label="Next activity"><i class="bi bi-chevron-right"></i></div>
+      <div class="activity-button-prev swiper-button-prev" role="button" aria-label="Previous activity"><i class="bi bi-chevron-left"></i></div>
     </div>
   </div>
 
+  <!-- Testimonials Section -->
+  <div class="section fade-in">
+    <h2>What Volunteers Say</h2>
+    <div class="swiper testimonial-swiper">
+      <div class="swiper-wrapper">
+        <div class="swiper-slide">
+          <div class="testimonial" tabindex="0">
+            <h5>Farah</h5>
+            <p>"CivicConnect made it so easy to find volunteering opportunities! I joined a food drive and met amazing people."</p>
+            <div class="stars">★★★★★</div>
+          </div>
+        </div>
+        <div class="swiper-slide">
+          <div class="testimonial" tabindex="0">
+            <h5>Samer</h5>
+            <p>"I love how simple it is to apply for opportunities. The platform is user-friendly and encourages more people to volunteer!"</p>
+            <div class="stars">★★★★☆</div>
+          </div>
+        </div>
+        <div class="swiper-slide">
+          <div class="testimonial" tabindex="0">
+            <h5>Leen</h5>
+            <p>"Through CivicConnect, I joined an education program for underprivileged kids. It was a rewarding experience!"</p>
+            <div class="stars">★★★★★</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-pagination swiper-pagination"></div>
+      <div class="testimonial-button-next swiper-button-next" role="button" aria-label="Next testimonial"><i class="bi bi-chevron-right"></i></div>
+      <div class="testimonial-button-prev swiper-button-prev" role="button" aria-label="Previous testimonial"><i class="bi bi-chevron-left"></i></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer mt-5">
+    <p>Follow us on <a href="https://instagram.com/handsconnect" target="_blank">Instagram</a></p>
+    <p>Contact us: <a href="mailto:handsconnect01@gmail.com">handsconnect01@gmail.com</a></p>
+  </div>
+
+  <!-- Back to Top Button -->
+  <button id="backToTop" title="Back to Top">↑</button>
+
+  <!-- Bootstrap JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <!-- AOS JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <!-- Swiper JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"></script>
+  <!-- CountUp JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.0.8/countUp.min.js"></script>
+  <script>
+    // Init AOS
+    if (window.AOS) AOS.init({ duration: 700, offset: 80, once: true });
+
+    // Counters (CountUp)
+    document.querySelectorAll('.counter').forEach(el => {
+      const end = +el.getAttribute('data-target') || 0;
+      const c = new CountUp(el, end, { duration: 2 });
+      if (!c.error) c.start();
+    });
+
+    // Swiper initializations
+    if (window.Swiper) {
+      const activitySwiper = new Swiper('.activity-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 12,
+        loop: true,
+        grabCursor: true,
+        keyboard: { enabled: true, onlyInViewport: true },
+        navigation: { nextEl: '.activity-button-next', prevEl: '.activity-button-prev' },
+        pagination: { el: '.activity-pagination', clickable: true },
+        breakpoints: { 768: { slidesPerView: 3 } },
+        autoplay: { delay: 3000, disableOnInteraction: false }
+      });
+
+      const testimonialSwiper = new Swiper('.testimonial-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 12,
+        loop: true,
+        grabCursor: true,
+        keyboard: { enabled: true, onlyInViewport: true },
+        navigation: { nextEl: '.testimonial-button-next', prevEl: '.testimonial-button-prev' },
+        pagination: { el: '.testimonial-pagination', clickable: true },
+        breakpoints: { 768: { slidesPerView: 3 } },
+        autoplay: { delay: 4000, disableOnInteraction: false }
+      });
+    }
+
+    // Scroll animations (IntersectionObserver)
+    const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+    }, observerOptions);
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Back to top button
+    const backToTopButton = document.getElementById('backToTop');
+    window.addEventListener('scroll', () => backToTopButton.classList.toggle('show', window.pageYOffset > 300));
+    backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // Hover effects
+    document.querySelectorAll('.activity, .testimonial').forEach(card => {
+      card.addEventListener('mouseenter', () => card.style.transform = 'translateY(-10px) scale(1.03)');
+      card.addEventListener('mouseleave', () => card.style.transform = 'translateY(0) scale(1)');
+    });
+
+    // Activity modal (optional if you add modal markup later)
+    document.querySelectorAll('.activity').forEach(card => card.addEventListener('click', () => {
+      const img = card.querySelector('img')?.src || '';
+      const title = card.querySelector('h5')?.textContent || '';
+      const desc = card.querySelector('p')?.textContent || '';
+      const modalImg = document.getElementById('modal-img');
+      const modalTitle = document.getElementById('modal-title');
+      const modalDesc = document.getElementById('modal-desc');
+      if (modalImg) modalImg.src = img; if (modalTitle) modalTitle.textContent = title; if (modalDesc) modalDesc.textContent = desc;
+      const modalEl = document.getElementById('activityModal'); if (modalEl) new bootstrap.Modal(modalEl).show();
+    }));
+
+    // Feedback form
+    document.getElementById('feedback-form')?.addEventListener('submit', e => { e.preventDefault(); alert('Thank you — your message has been sent!'); e.target.reset(); });
+  </script>
 </body>
 </html>

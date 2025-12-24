@@ -1,26 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HandsConnect Landing Page</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CivicConnect Landing Page</title>
+
   <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-  <!-- Google Fonts: Using Roboto for a clean, modern look -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" />
+
   <style>
-    /* Global Styles */
     body {
       font-family: 'Roboto', sans-serif;
       background: url('handinhand.jpeg') no-repeat center center fixed;
       background-size: cover;
-      position: relative;
       margin: 0;
       padding-top: 80px;
-      color: #f8f9fa; /* Light text for high contrast against dark overlay */
+      color: #f8f9fa;
     }
-    
-    /* Refined Overlay with a subtle gradient */
+
     .overlay {
       background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.6));
       position: absolute;
@@ -30,140 +31,173 @@
       height: 100%;
       z-index: -1;
     }
-    
-    /* Enhanced Navbar Styling */
+
     .navbar {
-      background: linear-gradient(90deg, #44c6c4, #41d6d4);
+      background: linear-gradient(90deg, #007BFF, #0056b3);
       padding: 15px 30px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      transition: background 0.3s ease;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
     }
-    
+
+    .navbar.dark-mode {
+      background: linear-gradient(90deg, #1a1a1a, #333);
+    }
+
     .navbar-brand {
       display: flex;
       align-items: center;
       font-weight: 700;
-      font-size: 1.5rem;
+      font-size: 1.8rem;
+      color: #fff;
+      cursor: pointer;
     }
-    
+
     .navbar-brand img {
-      height: 45px;
-      margin-right: 10px;
+      height: 80px;
+      width: auto;
+      margin-right: 12px;
       transition: transform 0.3s ease;
     }
-    
+
     .navbar-brand:hover img {
       transform: scale(1.05);
     }
-    
-    .center-nav {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-    }
-    
-    .nav-item {
-      margin: 0 15px;
-    }
-    
+
     .nav-link {
-      color: #f8f9fa !important;
+      color: #fff !important;
       font-weight: 500;
-      font-size: 1rem;
       transition: color 0.3s ease, transform 0.3s ease;
     }
-    
+
     .nav-link:hover {
-      color: #d1e9ff !important;
+      color: #ffe6cc !important;
       transform: translateY(-2px);
     }
-    
+
     .auth-links .nav-link {
       margin-left: 15px;
     }
-    
-    /* Content Styling */
-    .content {
-      margin-top: 100px;
-      padding: 60px 40px;
-      background: rgba(0, 0, 0, 0.65);
-      border-radius: 12px;
-      display: inline-block;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-      animation: fadeInUp 1s ease-out;
-    }
-    
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 20px;
-    }
-    
-    p {
-      font-size: 1.1rem;
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-    
-    /* Enhanced Button Styling */
-    .btn-container a.btn-custom {
-      margin: 10px;
-      padding: 14px 28px;
-      font-size: 1.1rem;
-      border-radius: 30px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    .btn-container a.btn-custom:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Additional Spacing */
+
     .container {
-      padding-top: 100px;
+      padding-top: 120px;
       padding-bottom: 60px;
     }
-    
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-      .center-nav {
-        position: static;
-        transform: none;
-        margin-top: 10px;
-      }
-      
-      .navbar .container-fluid {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      .auth-links {
-        margin-top: 10px;
-      }
+
+    .content {
+      background: rgba(0, 0, 0, 0.65);
+      padding: 60px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+      animation: fadeInUp 1s ease-out;
+      max-width: 700px;
+      margin: auto;
+      text-align: center;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    p {
+      font-size: 1.2rem;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    /* CTA Boxes */
+    .cta-box {
+      background: #fff;
+      color: #333;
+      padding: 40px 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      text-align: center;
+      min-height: 320px; /* ensures equal height */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .cta-box:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+    }
+    .cta-box .icon {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+    .cta-box:hover .icon {
+      transform: rotate(10deg) scale(1.2);
+      color: #007BFF;
+    }
+
+    body.dark-mode {
+      background: linear-gradient(180deg, #1a1a1a, #2d2d2d);
+      color: #f8f9fa;
+    }
+
+    body.dark-mode .overlay {
+      background: linear-gradient(180deg, rgba(0,0,0,0.8), rgba(0,0,0,0.8));
+    }
+
+    body.dark-mode .content {
+      background: rgba(30,30,30,0.9);
+      color: #f8f9fa;
+    }
+
+    body.dark-mode .cta-box {
+      background: #333;
+      color: #f8f9fa;
+    }
+
+    body.dark-mode .cta-box:hover {
+      background: #444;
+    }
+
+    /* Dark mode toggle */
+    .dark-mode-toggle {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: rgba(0,0,0,0.5);
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      z-index: 1000;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+
+    .dark-mode-toggle:hover {
+      background: rgba(0,0,0,0.7);
+      transform: scale(1.1);
     }
   </style>
 </head>
 <body>
-
   <div class="overlay"></div>
 
+  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
     <div class="container-fluid">
-      <a class="navbar-brand" href="#">
-        <img src="logo-HandsConnect.jfif" alt="Logo">
+      <!-- Logo triggers modal -->
+      <a class="navbar-brand" href="#" data-bs-toggle="modal" data-bs-target="#logoModal">
+        <img src="logo.png" alt="CivicConnect Logo" />
         CivicConnect
       </a>
 
@@ -184,20 +218,103 @@
     </div>
   </nav>
 
+  <!-- Hero Content -->
   <div class="container">
     <div class="content">
-      <h1>Welcome to HandsConnect</h1>
-      <p>This is a place where you can make an impact by finding many available opportunities to volunteer.
-         As an NGO representative, you can also go ahead and post available opportunities.</p>
-      <p>Sign up now and start helping people in need.</p>
+      <h1>Welcome to CivicConnect</h1>
+      <p>Discover meaningful opportunities to volunteer and make a difference in your community. NGOs can also post their latest initiatives and connect with passionate individuals.</p>
+      <p>Join us today and start helping people in need.</p>
+    </div>
 
-      <div class="btn-container">
-        <a href="opportunities.html" class="btn btn-primary btn-custom">Find Opportunities</a>
-        <a href="dashboard.html" class="btn btn-success btn-custom">Post Opportunities</a>
+    <!-- CTA Boxes -->
+    <div class="row justify-content-center mt-5 px-3">
+      <!-- NGO Box -->
+      <div class="col-md-5 mb-4 d-flex">
+        <div class="cta-box flex-fill">
+          <div class="icon text-warning"><i class="bi bi-building"></i></div>
+          <h3 class="mb-3 text-primary">Are You an NGO?</h3>
+          <p class="lead">✨ Share your mission, post opportunities, and connect with volunteers eager to help.</p>
+          <a href="dashboard.html" class="btn btn-warning text-dark mt-3 btn-lg">🚀 Post Opportunities</a>
+        </div>
+      </div>
+
+      <!-- Volunteer Box -->
+      <div class="col-md-5 mb-4 d-flex">
+        <div class="cta-box flex-fill">
+          <div class="icon text-success"><i class="bi bi-people"></i></div>
+          <h3 class="mb-3 text-success">Looking to Volunteer?</h3>
+          <p class="lead">💡 Discover causes you care about and make an impact in your community.</p>
+          <a href="opportunities.html" class="btn btn-primary mt-3 btn-lg">🌍 Find Opportunities</a>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Bootstrap JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Dark mode toggle
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const body = document.body;
+    const navbar = document.querySelector('.navbar');
+
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      body.classList.add('dark-mode');
+      navbar.classList.add('dark-mode');
+      darkModeToggle.textContent = '☀️';
+    }
+
+    darkModeToggle.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      navbar.classList.toggle('dark-mode');
+
+      if (body.classList.contains('dark-mode')) {
+        darkModeToggle.textContent = '☀️';
+        localStorage.setItem('theme', 'dark');
+      } else {
+        darkModeToggle.textContent = '🌙';
+        localStorage.setItem('theme', 'light');
+      }
+    });
+
+    // Add some particle effect or animation
+    const ctaBoxes = document.querySelectorAll('.cta-box');
+    ctaBoxes.forEach(box => {
+      box.addEventListener('mouseenter', () => {
+        box.style.transform = 'translateY(-10px) scale(1.03) rotate(1deg)';
+      });
+
+      box.addEventListener('mouseleave', () => {
+        box.style.transform = 'translateY(0) scale(1) rotate(0deg)';
+      });
+    });
+
+    // Smooth scroll for navigation links
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const href = link.getAttribute('href');
+        if (href.startsWith('#')) {
+          e.preventDefault();
+          const target = document.querySelector(href);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      });
+    });
+  </script>
+
+  <!-- Logo Modal -->
+  <div class="modal fade" id="logoModal" tabindex="-1" aria-labelledby="logoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-white">
+        <div class="modal-body text-center">
+          <img src="logo.png" alt="CivicConnect Logo" class="img-fluid" />
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
