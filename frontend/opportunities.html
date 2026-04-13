@@ -11,9 +11,9 @@
 
     <style>
         :root {
-            --teal:       #0fb9b1;
-            --teal-dark:  #0a8f89;
-            --teal-light: #e0faf9;
+            --teal:       #007BFF;
+            --teal-dark:  #0056b3;
+            --teal-light: #e3f2fd;
             --navy:       #0d2b45;
             --slate:      #4a6274;
             --sand:       #f7f4ef;
@@ -35,7 +35,7 @@
 
         /* ── NAVBAR ─────────────────────────────── */
         .navbar {
-            background: var(--navy);
+            background: linear-gradient(90deg, #007BFF, #FF6B00);
             padding: 0 40px;
             height: 68px;
             position: fixed;
@@ -94,7 +94,7 @@
         }
 
         #auth-link {
-            background: var(--teal);
+            background: #FF6B00;
             color: var(--white) !important;
             border: none;
             border-radius: 10px;
@@ -109,7 +109,7 @@
             gap: 7px;
         }
 
-        #auth-link:hover { background: var(--teal-dark); transform: translateY(-1px); }
+        #auth-link:hover { background: #e55a00; transform: translateY(-1px); }
 
         #logout-btn {
             background: transparent;
@@ -142,7 +142,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: radial-gradient(ellipse 70% 80% at 50% 110%, rgba(15,185,177,.22), transparent);
+            background: radial-gradient(ellipse 70% 80% at 50% 110%, rgba(0,123,255,.22), transparent);
             pointer-events: none;
         }
 
@@ -150,9 +150,9 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(15,185,177,.18);
+            background: rgba(0,123,255,.18);
             color: var(--teal);
-            border: 1px solid rgba(11, 74, 209, 0.35);
+            border: 1px solid rgba(0, 123, 255, 0.35);
             border-radius: 100px;
             padding: 5px 14px;
             font-size: .8rem;
@@ -270,7 +270,7 @@
         .field-group input:focus,
         .field-group select:focus {
             border-color: var(--teal);
-            box-shadow: 0 0 0 3px rgba(15,185,177,.15);
+            box-shadow: 0 0 0 3px rgba(0,123,255,.15);
             background: var(--white);
         }
 
@@ -344,12 +344,12 @@
         .opp-card:hover {
             transform: translateY(-5px);
             box-shadow: var(--shadow-md);
-            border-color: rgba(15,185,177,.3);
+            border-color: rgba(0,123,255,.3);
         }
 
         .card-accent {
             height: 5px;
-            background: linear-gradient(90deg, var(--teal), #3ddbd9);
+            background: linear-gradient(90deg, var(--teal), #3da5ff);
         }
 
         .card-body {
@@ -678,29 +678,45 @@
         return localStorage.getItem("token") !== null;
     }
 
-    function updateAuthUI() {
-        const authLink = document.getElementById("auth-link");
-        const navRight = document.querySelector(".navbar-right");
+  function updateAuthUI() {
+    const authLink = document.getElementById("auth-link");
+    // Prefer the dedicated navbar-right container for placing logout button
+    const navRight = document.querySelector(".navbar-right") || authLink.parentElement;
 
-        if (checkAuth()) {
-            const userId = localStorage.getItem("user_id");
-            authLink.innerHTML = '<i class="fa fa-user"></i> My Profile';
-            authLink.href = `profile.html?userId=${userId}`;
+    const existingLogout = document.getElementById("logout-btn");
 
-            if (!document.getElementById("logout-btn")) {
-                const logoutBtn = document.createElement("button");
-                logoutBtn.id = "logout-btn";
-                logoutBtn.className = "";
-                logoutBtn.id = "logout-btn";
-                logoutBtn.textContent = "Log Out";
-                logoutBtn.onclick = () => { localStorage.clear(); window.location.reload(); };
-                navRight.appendChild(logoutBtn);
-            }
-        } else {
-            authLink.innerHTML = '<i class="fa fa-sign-in-alt"></i> Login';
-            authLink.href = "login.html";
+    if (checkAuth()) {
+        const userId = localStorage.getItem("user_id");
+        authLink.innerHTML = '<i class="fa fa-user"></i> My Profile';
+        authLink.href = `profile.html?userId=${userId}`;
+
+        // Create logout button only once and attach a safe handler
+        if (!existingLogout) {
+            const logoutBtn = document.createElement("button");
+            logoutBtn.id = "logout-btn";
+            logoutBtn.type = "button"; // ensures it won't submit forms
+            logoutBtn.className = "btn btn-outline-light ms-2";
+            logoutBtn.textContent = "Log Out";
+
+            logoutBtn.addEventListener("click", (e) => {
+                e.stopPropagation(); // prevent accidental propagation
+                // Remove only auth-related keys — keep other saved data
+                localStorage.removeItem("token");
+                localStorage.removeItem("user_id");
+                localStorage.removeItem("ngo_id");
+                // Redirect to landing page (clear, explicit UX)
+                window.location.href = "landingpage.html";
+            });
+
+            // Append to the navbar-right so layout is stable and predictable
+            navRight.appendChild(logoutBtn);
         }
+    } else {
+        authLink.innerHTML = '<i class="fa fa-sign-in-alt"></i> Login';
+        authLink.href = "login.html";
+        if (existingLogout) existingLogout.remove();
     }
+}
 
     function formatDate(dateStr) {
         if (!dateStr) return '—';
