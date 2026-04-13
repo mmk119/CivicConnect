@@ -4,77 +4,767 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Volunteer Profile - HANDSCONNECT</title>
+  <title>Volunteer Profile - CivicConnect</title>
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <link rel="stylesheet" href="profileStyle.css"> <!-- Custom CSS -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #f7f4ef 0%, #e3f2fd 50%, #f0f7ff 100%);
+      color: #0d2b45;
+      min-height: 100vh;
+    }
+
+    /* ── NAVBAR ─────────────────────────────── */
+    .navbar-custom {
+      background: linear-gradient(90deg, #007BFF, #FF6B00);
+      padding: 15px 40px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .navbar-custom .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff !important;
+      text-decoration: none;
+    }
+
+    .navbar-custom .navbar-brand img {
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .navbar-custom a.back-link {
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .navbar-custom a.back-link:hover {
+      color: #fff;
+    }
+
+    /* ── MAIN CONTENT ─────────────────────── */
+    .profile-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .profile-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .profile-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      color: #0d2b45;
+      margin-bottom: 10px;
+      font-weight: 800;
+    }
+
+    .profile-header p {
+      color: #4a6274;
+      font-size: 1.1rem;
+    }
+
+    /* ── PROFILE CARD ────────────────────── */
+    .profile-card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(13, 43, 69, 0.12);
+      overflow: hidden;
+      border-top: 5px solid #007BFF;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .profile-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 50px rgba(13, 43, 69, 0.18);
+    }
+
+    /* ── PROFILE AVATAR SECTION ──────────── */
+    .profile-avatar-section {
+      background: linear-gradient(135deg, #007BFF 0%, #0056b3 100%);
+      padding: 40px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .profile-avatar-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200px;
+      height: 200px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+    }
+
+    .profile-picture-wrapper {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+
+    .profile-img {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 5px solid #fff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s;
+    }
+
+    .profile-img:hover {
+      transform: scale(1.05);
+    }
+
+    .upload-badge {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: #FF6B00;
+      color: #fff;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 3px solid #fff;
+      transition: background 0.3s, transform 0.3s;
+      font-size: 1.2rem;
+    }
+
+    .upload-badge:hover {
+      background: #e55a00;
+      transform: scale(1.1);
+    }
+
+    #upload-photo {
+      display: none;
+    }
+
+    .profile-name {
+      color: #fff;
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-family: 'Playfair Display', serif;
+      margin-bottom: 5px;
+    }
+
+    .profile-status {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .status-badge {
+      width: 8px;
+      height: 8px;
+      background: #28a745;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ── PROFILE BODY ───────────────────── */
+    .profile-body {
+      padding: 40px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin-bottom: 35px;
+    }
+
+    .info-item {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #007BFF;
+      transition: all 0.3s;
+    }
+
+    .info-item:hover {
+      background: #e3f2fd;
+      transform: translateX(5px);
+    }
+
+    .info-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #4a6274;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .info-label i {
+      color: #007BFF;
+      font-size: 1rem;
+    }
+
+    .info-value {
+      font-size: 1.05rem;
+      color: #0d2b45;
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    /* ── SECTION TITLE ──────────────────── */
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      color: #0d2b45;
+      margin-top: 30px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid #007BFF;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title i {
+      color: #FF6B00;
+      font-size: 1.3rem;
+    }
+
+    /* ── SKILLS & EXPERIENCES ──────────── */
+    .skills-container,
+    .experiences-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .skill-tag,
+    .exp-item {
+      background: linear-gradient(135deg, #e3f2fd, #f0f7ff);
+      border: 2px solid #007BFF;
+      color: #0056b3;
+      padding: 12px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 45px;
+    }
+
+    .skill-tag i,
+    .exp-item i {
+      font-size: 0.85rem;
+    }
+
+    .skill-tag:hover,
+    .exp-item:hover {
+      background: linear-gradient(135deg, #007BFF, #0056b3);
+      color: #fff;
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+    }
+
+    .empty-state {
+      background: #f8f9fa;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      color: #4a6274;
+    }
+
+    .empty-state i {
+      font-size: 2.5rem;
+      color: #c8d6e0;
+      margin-bottom: 15px;
+      display: block;
+    }
+
+    /* ── ACTION BUTTONS ─────────────────── */
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 2px solid #e3f2fd;
+    }
+
+    .btn-modern {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .btn-primary-modern {
+      background: linear-gradient(90deg, #007BFF, #0056b3);
+      color: #fff;
+    }
+
+    .btn-primary-modern:hover {
+      background: linear-gradient(90deg, #0056b3, #003d82);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+      color: #fff;
+    }
+
+    .btn-secondary-modern {
+      background: #f8f9fa;
+      color: #0d2b45;
+      border: 2px solid #007BFF;
+    }
+
+    .btn-secondary-modern:hover {
+      background: #e3f2fd;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 123, 255, 0.15);
+    }
+
+    .btn-back {
+      background: transparent;
+      color: #007BFF;
+      border: 2px solid #007BFF;
+    }
+
+    .btn-back:hover {
+      background: #007BFF;
+      color: #fff;
+    }
+
+    /* ── MODAL STYLE ────────────────────── */
+    .modal-content {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      border-top: 5px solid #007BFF;
+    }
+
+    .modal-header {
+      background: linear-gradient(90deg, #007BFF, #0056b3);
+      color: #fff;
+      border: none;
+      border-radius: 15px 15px 0 0;
+    }
+
+    .modal-header .btn-close {
+      filter: brightness(0) invert(1);
+    }
+
+    .form-control,
+    .form-select {
+      border: 2px solid #e3f2fd;
+      border-radius: 8px;
+      padding: 12px 15px;
+      font-size: 1rem;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #007BFF;
+      box-shadow: 0 0 0 0.3rem rgba(0, 123, 255, 0.15);
+      outline: none;
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: #0d2b45;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    /* ── LOADING STATE ─────────────────── */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #e3f2fd;
+      border-top: 3px solid #007BFF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #4a6274;
+      font-style: italic;
+    }
+
+    /* ── RESPONSIVE ────────────────────── */
+    @media (max-width: 768px) {
+      .profile-header h1 {
+        font-size: 1.8rem;
+      }
+
+      .profile-body {
+        padding: 25px;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .action-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .skills-container,
+      .experiences-container {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      }
+
+      .navbar-custom {
+        padding: 12px 20px;
+      }
+
+      .navbar-custom .navbar-brand {
+        font-size: 1.3rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .profile-img {
+        width: 110px;
+        height: 110px;
+      }
+
+      .profile-name {
+        font-size: 1.4rem;
+      }
+
+      .section-title {
+        font-size: 1.2rem;
+      }
+
+      .skills-container,
+      .experiences-container {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+      }
+
+      .skill-tag,
+      .exp-item {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+      }
+    }
+
+    /* ── ANIMATIONS ─────────────────────── */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .profile-card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    /* ── TOAST NOTIFICATION ─────────────── */
+    .toast-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #fff;
+      border-left: 5px solid #28a745;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      animation: slideIn 0.3s ease;
+    }
+
+    .toast-notification.error {
+      border-left-color: #ff6b6b;
+    }
+
+    .toast-notification.success {
+      border-left-color: #28a745;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <a id="profile-link" href="#" style="display: none;"></a>
-  <div class="content-wrapper">
-    <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
-    <h2>Volunteer Profile</h2>
-    <p>Manage and update your profile details.</p>
+  <!-- NAVBAR -->
+  <nav class="navbar-custom">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+      <a class="navbar-brand" href="landingpage.html">
+        <img src="logo.png" alt="CivicConnect Logo">
+        CivicConnect
+      </a>
+      <a class="back-link" href="landingpage.html">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+    </div>
+  </nav>
 
-    <div class="card profile-card shadow-lg">
-      <div class="text-center">
-        <img id="profile-picture" src="default-profile.jpg" alt="Profile Picture" class="profile-img">
-        <input type="file" id="upload-photo" class="form-control mt-2">
+  <!-- MAIN CONTENT -->
+  <div class="profile-container">
+    <div class="profile-header">
+      <h1>My Profile</h1>
+      <p>Manage and showcase your volunteer information</p>
+    </div>
+
+    <div class="profile-card">
+      <!-- AVATAR SECTION -->
+      <div class="profile-avatar-section">
+        <div class="profile-picture-wrapper">
+          <img id="profile-picture" src="default-profile.jpg" alt="Profile Picture" class="profile-img">
+          <div class="upload-badge" onclick="document.getElementById('upload-photo').click()" title="Change profile picture">
+            <i class="fas fa-camera"></i>
+          </div>
+          <input type="file" id="upload-photo" accept="image/*">
+        </div>
+        <div class="profile-name" id="name">Loading...</div>
+        <div class="profile-status">
+          <span class="status-badge"></span>
+          <span>Active Volunteer</span>
+        </div>
       </div>
 
-      <div class="card-body">
-        <h4 id="name">Loading...</h4>
-        <p><strong>Email:</strong> <span id="email">Loading...</span></p>
-        <p><strong>Phone:</strong> <span id="phone">Loading...</span></p>
-        <p><strong>City:</strong> <span id="city">Loading...</span></p>
-        <p><strong>Date of Birth:</strong> <span id="dob">Loading...</span></p>
+      <!-- PROFILE BODY -->
+      <div class="profile-body">
+        <!-- BASIC INFO GRID -->
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-envelope"></i> Email
+            </div>
+            <div class="info-value" id="email">Loading...</div>
+          </div>
 
-        <h5 class="mt-3">Skills</h5>
-        <ul id="skills" class="list-group">
-          <li class="list-group-item text-muted">Loading skills...</li>
-        </ul>
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-phone"></i> Phone
+            </div>
+            <div class="info-value" id="phone">Loading...</div>
+          </div>
 
-        <h5 class="mt-3">Past Experiences</h5>
-        <ul id="experiences" class="list-group">
-          <li class="list-group-item text-muted">Loading experiences...</li>
-        </ul>
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-location-dot"></i> City
+            </div>
+            <div class="info-value" id="city">Loading...</div>
+          </div>
 
-        <button id="edit-btn" class="btn btn-primary w-100 mt-3">Edit Profile</button>
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-birthday-cake"></i> Date of Birth
+            </div>
+            <div class="info-value" id="dob">Loading...</div>
+          </div>
+        </div>
+
+        <!-- SKILLS SECTION -->
+        <h3 class="section-title">
+          <i class="fas fa-star"></i> Skills
+        </h3>
+        <div class="skills-container" id="skills">
+          <div class="empty-state">
+            <i class="fas fa-sparkles"></i>
+            <p>No skills listed yet. Add your skills!</p>
+          </div>
+        </div>
+
+        <!-- EXPERIENCES SECTION -->
+        <h3 class="section-title">
+          <i class="fas fa-briefcase"></i> Past Experiences
+        </h3>
+        <div class="experiences-container" id="experiences">
+          <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <p>No experiences listed yet. Share your journey!</p>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="action-buttons">
+          <button id="edit-btn" class="btn-modern btn-primary-modern">
+            <i class="fas fa-edit"></i> Edit Profile
+          </button>
+          <button id="logout-btn" class="btn-modern btn-secondary-modern">
+            <i class="fas fa-sign-out-alt"></i> Log Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT PROFILE MODAL -->
+  <div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-user-edit"></i> Edit Your Profile
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-form">
+            <div class="mb-3">
+              <label class="form-label" for="edit-name">
+                <i class="fas fa-user"></i> Full Name
+              </label>
+              <input type="text" class="form-control" id="edit-name" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-phone">
+                <i class="fas fa-phone"></i> Phone Number
+              </label>
+              <input type="tel" class="form-control" id="edit-phone">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-city">
+                <i class="fas fa-location-dot"></i> City
+              </label>
+              <input type="text" class="form-control" id="edit-city">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-dob">
+                <i class="fas fa-birthday-cake"></i> Date of Birth
+              </label>
+              <input type="date" class="form-control" id="edit-dob">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-skills">
+                <i class="fas fa-star"></i> Skills (comma-separated)
+              </label>
+              <textarea class="form-control" id="edit-skills" rows="2" placeholder="e.g. Teaching, Leadership, Communication"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-experiences">
+                <i class="fas fa-briefcase"></i> Past Experiences (comma-separated)
+              </label>
+              <textarea class="form-control" id="edit-experiences" rows="2" placeholder="e.g. Volunteer at XYZ, Project Manager at ABC"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn-modern btn-secondary-modern" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> Cancel
+          </button>
+          <button type="button" class="btn-modern btn-primary-modern" id="save-changes-btn">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
+    // Utility: Show notification toast
+    function showNotification(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast-notification ${type}`;
+      toast.innerHTML = `<strong>${type === 'success' ? '✓ Success' : '✗ Error'}:</strong> ${message}`;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
     document.addEventListener("DOMContentLoaded", async function () {
       const token = localStorage.getItem('token');
       const user_id = localStorage.getItem('user_id');
 
-      // Validate token FIRST
       if (!token || !user_id) {
-        alert('Please login first!');
-        window.location.href = '/login.html';
+        showNotification('Please login first!', 'error');
+        setTimeout(() => window.location.href = '/login.html', 1500);
         return;
       }
 
       const editButton = document.getElementById("edit-btn");
+      const logoutButton = document.getElementById("logout-btn");
       const nameField = document.getElementById("name");
       const emailField = document.getElementById("email");
       const phoneField = document.getElementById("phone");
       const cityField = document.getElementById("city");
       const dobField = document.getElementById("dob");
-      const skillsList = document.getElementById("skills");
-      const experiencesList = document.getElementById("experiences");
+      const skillsContainer = document.getElementById("skills");
+      const experiencesContainer = document.getElementById("experiences");
       const uploadPhotoInput = document.getElementById("upload-photo");
       const profilePicture = document.getElementById("profile-picture");
-      const profileLink = document.getElementById("profile-link");
-
-      if (profileLink) {
-        profileLink.href = `profile.html?user_id=${user_id}`;
-      }
+      const editModal = new bootstrap.Modal(document.getElementById("editModal"));
+      const saveChangesBtn = document.getElementById("save-changes-btn");
 
       async function fetchProfile() {
         try {
@@ -85,122 +775,119 @@
             }
           });
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
           const data = await response.json();
-          console.log("Profile data received:", data);
+          console.log("Profile data:", data);
 
-          // Update all fields with actual data
           nameField.textContent = data.name || 'Not provided';
           emailField.textContent = data.email || 'Not provided';
           phoneField.textContent = data.phone || 'Not provided';
           cityField.textContent = data.city || 'Not provided';
           dobField.textContent = data.dateOfBirth || 'Not provided';
 
-          // Set profile picture
           profilePicture.src = data.imageUrl || 'default-profile.jpg';
           profilePicture.onerror = function () {
-            if (this.src.includes('default-profile.jpg')) return;
-            this.src = 'default-profile.jpg?t=' + Date.now();
+            if (!this.src.includes('default-profile.jpg')) {
+              this.src = 'default-profile.jpg?t=' + Date.now();
+            }
           };
 
-          // Update skills list
-          skillsList.innerHTML = data.skills && data.skills.length > 0 ?
-            data.skills.map(skill => `<li class="list-group-item">${skill}</li>`).join("") :
-            '<li class="list-group-item text-muted">No skills listed</li>';
+          // Skills
+          if (data.skills && data.skills.length > 0) {
+            skillsContainer.innerHTML = data.skills
+              .map(skill => `<div class="skill-tag"><i class="fas fa-check-circle"></i> ${skill}</div>`)
+              .join("");
+          } else {
+            skillsContainer.innerHTML = `
+              <div class="empty-state">
+                <i class="fas fa-sparkles"></i>
+                <p>No skills listed yet. Add your skills!</p>
+              </div>`;
+          }
 
-          // Update experiences list
-          experiencesList.innerHTML = data.experiences && data.experiences.length > 0 ?
-            data.experiences.map(exp => `<li class="list-group-item">${exp}</li>`).join("") :
-            '<li class="list-group-item text-muted">No experiences listed</li>';
-
+          // Experiences
+          if (data.experiences && data.experiences.length > 0) {
+            experiencesContainer.innerHTML = data.experiences
+              .map(exp => `<div class="exp-item"><i class="fas fa-award"></i> ${exp}</div>`)
+              .join("");
+          } else {
+            experiencesContainer.innerHTML = `
+              <div class="empty-state">
+                <i class="fas fa-history"></i>
+                <p>No experiences listed yet. Share your journey!</p>
+              </div>`;
+          }
         } catch (error) {
           console.error('Profile fetch error:', error);
-
-          // Show error states
-          nameField.textContent = 'Error loading data';
-          emailField.textContent = 'Error loading data';
-          phoneField.textContent = 'Error loading data';
-          cityField.textContent = 'Error loading data';
-          dobField.textContent = 'Error loading data';
-          skillsList.innerHTML = '<li class="list-group-item text-danger">Failed to load skills</li>';
-          experiencesList.innerHTML = '<li class="list-group-item text-danger">Failed to load experiences</li>';
-
+          showNotification('Failed to load profile', 'error');
           if (error.message.includes('Unauthorized')) {
-            alert('Session expired. Please login again.');
-            window.location.href = '/login.html';
+            setTimeout(() => window.location.href = '/login.html', 1500);
           }
         }
       }
 
-      // Update the upload handler for profile picture
       uploadPhotoInput.addEventListener("change", async function () {
         const file = uploadPhotoInput.files[0];
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-          alert('Please upload an image file (JPEG, PNG, etc.)');
+          showNotification('Please upload an image file', 'error');
           return;
         }
 
         const formData = new FormData();
-        formData.append("file", file); // Must match the multer's field name
+        formData.append("file", file);
 
         try {
           const response = await fetch("/api/upload-profile-picture", {
             method: "POST",
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
           });
 
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Upload failed');
-          }
+          if (!response.ok) throw new Error('Upload failed');
 
           const result = await response.json();
           profilePicture.src = result.imageUrl + '?t=' + Date.now();
           uploadPhotoInput.value = '';
-          alert('Profile picture updated!');
+          showNotification('Profile picture updated!', 'success');
         } catch (error) {
-          console.error('Upload failed:', error);
-          alert(`Upload failed: ${error.message}`);
+          console.error('Upload error:', error);
+          showNotification('Failed to upload image', 'error');
         }
       });
 
       editButton.addEventListener("click", async function () {
-        // Get current values
-        const currentName = nameField.textContent;
-        const currentEmail = emailField.textContent; // Email remains unchanged
-        const currentPhone = phoneField.textContent;
-        const currentCity = cityField.textContent;
-        const currentDob = dobField.textContent;
-        const currentSkills = Array.from(skillsList.children)
-          .map(li => li.textContent).filter(t => t !== 'No skills listed').join(', ');
-        const currentExperiences = Array.from(experiencesList.children)
-          .map(li => li.textContent).filter(t => t !== 'No experiences listed').join(', ');
+        document.getElementById("edit-name").value = nameField.textContent;
+        document.getElementById("edit-phone").value = phoneField.textContent;
+        document.getElementById("edit-city").value = cityField.textContent;
+        document.getElementById("edit-dob").value = dobField.textContent;
 
-        // Use prompts for updating fields except email which remains unchanged
-        const newName = prompt("Enter your name:", currentName) || currentName;
-        // Email is not editable, so we retain the currentEmail value.
-        const newPhone = prompt("Enter your phone number:", currentPhone) || currentPhone;
-        const newCity = prompt("Enter your city:", currentCity) || currentCity;
-        const newDob = prompt("Enter your date of birth (YYYY-MM-DD):", currentDob) || currentDob;
-        const newSkills = prompt("Enter your skills (comma-separated):", currentSkills) || '';
-        const newExperiences = prompt("Enter your past experiences (comma-separated):", currentExperiences) || '';
+        const skills = Array.from(skillsContainer.children)
+          .filter(el => el.classList.contains('skill-tag'))
+          .map(el => el.textContent.trim().replace('✓', '').trim())
+          .join(', ');
+        document.getElementById("edit-skills").value = skills;
 
+        const experiences = Array.from(experiencesContainer.children)
+          .filter(el => el.classList.contains('exp-item'))
+          .map(el => el.textContent.trim().replace('✓', '').trim())
+          .join(', ');
+        document.getElementById("edit-experiences").value = experiences;
+
+        editModal.show();
+      });
+
+      saveChangesBtn.addEventListener("click", async function () {
         const updatedProfile = {
-          name: newName,
-          email: currentEmail, // Email remains unchanged.
-          phone: newPhone,
-          city: newCity,
-          dateOfBirth: newDob,
-          skills: newSkills.split(',').map(s => s.trim()).filter(s => s),
-          experiences: newExperiences.split(',').map(e => e.trim()).filter(e => e)
+          name: document.getElementById("edit-name").value,
+          email: emailField.textContent,
+          phone: document.getElementById("edit-phone").value,
+          city: document.getElementById("edit-city").value,
+          dateOfBirth: document.getElementById("edit-dob").value,
+          skills: document.getElementById("edit-skills").value.split(',').map(s => s.trim()).filter(s => s),
+          experiences: document.getElementById("edit-experiences").value.split(',').map(e => e.trim()).filter(e => e)
         };
 
         try {
@@ -213,20 +900,25 @@
             body: JSON.stringify(updatedProfile)
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Update failed');
-          }
+          if (!response.ok) throw new Error('Update failed');
 
+          editModal.hide();
           await fetchProfile();
-          alert('Profile updated successfully!');
+          showNotification('Profile updated successfully!', 'success');
         } catch (error) {
           console.error('Update error:', error);
-          alert(error.message || 'Failed to update profile');
+          showNotification('Failed to update profile', 'error');
         }
       });
 
-      // Check token expiration
+      logoutButton.addEventListener("click", function () {
+        if (confirm('Are you sure you want to log out?')) {
+          localStorage.clear();
+          window.location.href = '/login.html';
+        }
+      });
+
+      // Validate token
       if (token) {
         try {
           const tokenPayload = JSON.parse(atob(token.split('.')[1]));
@@ -241,7 +933,6 @@
         }
       }
 
-      // Initial profile load
       await fetchProfile();
     });
   </script>
