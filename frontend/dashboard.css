@@ -11,13 +11,29 @@ body {
 .navbar-brand {
     display: flex;
     align-items: center;
+    gap: 10px;
     font-weight: bold;
     color: white;
 }
-.navbar-brand img {
-    width: 40px;
-    height: auto;
-    margin-right: 10px;
+.brand-logo-mark {
+    position: relative;
+    flex: 0 0 50px;
+    width: 50px;
+    height: 50px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.brand-logo-mark img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 74px;
+    height: 74px;
+    max-width: none;
+    transform: translate(-50%, -46%);
 }
 .navbar-nav a {
     color: white;
@@ -71,4 +87,3 @@ body {
 .btn-info:hover {
     background-color: #36b3b0;
 }
-

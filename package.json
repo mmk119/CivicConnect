@@ -1,22 +1,22 @@
 {
-  "name": "handsconnect",
+  "name": "civicconnect",
   "version": "1.0.0",
-  "description": "HandsConnect is a user-friendly web platform that allows NGOs to post opportunities and individuals (students, community members) to apply.",
+  "description": "CivicConnect is a user-friendly web platform that allows NGOs to post opportunities and individuals (students, community members) to apply.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ouss202/HandsConnect.git"
+    "url": "git+https://github.com/ouss202/CivicConnect.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ouss202/HandsConnect/issues"
+    "url": "https://github.com/ouss202/CivicConnect/issues"
   },
-  "homepage": "https://github.com/ouss202/HandsConnect#readme",
+  "homepage": "https://github.com/ouss202/CivicConnect#readme",
   "devDependencies": {
     "@eslint/js": "^9.23.0",
     "debug": "^4.4.0",

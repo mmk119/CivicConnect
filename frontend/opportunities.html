@@ -64,6 +64,30 @@
             border: 2px solid rgba(255,255,255,.25);
         }
 
+        .brand-logo-mark {
+            position: relative;
+            flex: 0 0 50px;
+            width: 50px;
+            height: 50px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,.95);
+            border-radius: 10px;
+            background: rgba(255,255,255,.9);
+            box-shadow: 0 2px 8px rgba(0,0,0,.18);
+        }
+
+        .brand-logo-mark img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 74px;
+            height: 74px;
+            max-width: none;
+            transform: translate(-50%, -46%);
+            border: 0;
+            border-radius: 0;
+        }
+
         .navbar-links {
             display: flex;
             align-items: center;
@@ -554,7 +578,9 @@
 <!-- NAVBAR -->
 <nav class="navbar">
     <a class="navbar-brand" href="landingpage.html">
-        <img src="logo.png" alt="CivicConnect Logo">
+        <span class="brand-logo-mark" aria-hidden="true">
+            <img src="logo.png" alt="">
+        </span>
         CivicConnect
     </a>
 
