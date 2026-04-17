@@ -1,308 +1,879 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Opportunities - HANDSCONNECT</title>
+    <title>Opportunities | CivicConnect</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="styles.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
     <style>
-        .opportunity-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        :root {
+            --teal:       #007BFF;
+            --teal-dark:  #0056b3;
+            --teal-light: #e3f2fd;
+            --navy:       #0d2b45;
+            --slate:      #4a6274;
+            --sand:       #f7f4ef;
+            --white:      #ffffff;
+            --shadow-sm:  0 2px 12px rgba(13,43,69,.07);
+            --shadow-md:  0 8px 32px rgba(13,43,69,.11);
+            --shadow-lg:  0 20px 60px rgba(13,43,69,.14);
+            --radius:     18px;
         }
 
-        .btn-apply {
-            background-color: #41d6d4;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--sand);
+            color: var(--navy);
+            min-height: 100vh;
+        }
+
+        /* ── NAVBAR ─────────────────────────────── */
+        .navbar {
+            background: linear-gradient(90deg, #007BFF, #FF6B00);
+            padding: 0 40px;
+            height: 68px;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 20px rgba(0,0,0,.18);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             text-decoration: none;
-            display: inline-block;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: var(--white) !important;
+            letter-spacing: .3px;
+        }
+
+        .navbar-brand img {
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.25);
+        }
+
+        .navbar-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            list-style: none;
+        }
+
+        .navbar-links a {
+            color: rgba(255,255,255,.75);
+            text-decoration: none;
+            font-size: .9rem;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all .2s;
+        }
+
+        .navbar-links a:hover,
+        .navbar-links a.active {
+            color: var(--white);
+            background: rgba(255,255,255,.12);
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #auth-link {
+            background: #FF6B00;
+            color: var(--white) !important;
             border: none;
+            border-radius: 10px;
+            padding: 8px 18px;
+            font-size: .88rem;
+            font-weight: 600;
             cursor: pointer;
+            text-decoration: none;
+            transition: background .2s, transform .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
         }
 
-        .btn-apply:hover {
-            background-color: #36b3b0;
+        #auth-link:hover { background: #e55a00; transform: translateY(-1px); }
+
+        #logout-btn {
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,.35);
+            color: rgba(255,255,255,.8);
+            border-radius: 10px;
+            padding: 7px 14px;
+            font-size: .85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .2s;
         }
 
-        .applied {
-            background-color: #6c757d;
+        #logout-btn:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        /* ── HERO ───────────────────────────────── */
+        .hero {
+            margin-top: 68px;
+            background: var(--navy);
+            padding: 64px 40px 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 70% 80% at 50% 110%, rgba(0,123,255,.22), transparent);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,123,255,.18);
+            color: var(--teal);
+            border: 1px solid rgba(0, 123, 255, 0.35);
+            border-radius: 100px;
+            padding: 5px 14px;
+            font-size: .8rem;
+            font-weight: 600;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            color: var(--white);
+            line-height: 1.15;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 span { color: var(--teal); }
+
+        .hero p {
+            color: rgba(255,255,255,.6);
+            font-size: 1.05rem;
+            max-width: 480px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-top: 44px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--teal);
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .stat-label {
+            color: rgba(255,255,255,.5);
+            font-size: .78rem;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            margin-top: 4px;
+        }
+
+        /* ── SEARCH PANEL ───────────────────────── */
+        .search-panel {
+            max-width: 900px;
+            margin: -28px auto 0;
+            padding: 0 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .search-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 28px 32px;
+        }
+
+        .search-card h6 {
+            font-size: .78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--slate);
+            margin-bottom: 16px;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 160px 180px;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-group label {
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .field-group input,
+        .field-group select {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .9rem;
+            color: var(--navy);
+            background: var(--sand);
+            transition: border-color .2s, box-shadow .2s;
+            outline: none;
+            width: 100%;
+        }
+
+        .field-group input:focus,
+        .field-group select:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(0,123,255,.15);
+            background: var(--white);
+        }
+
+        .search-btn {
+            background: var(--teal);
+            color: var(--white);
+            border: none;
+            border-radius: 10px;
+            padding: 11px 20px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .2s, transform .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover { background: var(--teal-dark); transform: translateY(-1px); }
+
+        /* ── MAIN CONTENT ───────────────────────── */
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 48px 24px 80px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--navy);
+        }
+
+        .results-count {
+            background: var(--teal-light);
+            color: var(--teal-dark);
+            border-radius: 100px;
+            padding: 4px 14px;
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        /* ── OPPORTUNITY CARDS ──────────────────── */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .opp-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            border: 1.5px solid transparent;
+            overflow: hidden;
+            transition: transform .25s, box-shadow .25s, border-color .25s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .opp-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(0,123,255,.3);
+        }
+
+        .card-accent {
+            height: 5px;
+            background: linear-gradient(90deg, var(--teal), #3da5ff);
+        }
+
+        .card-body {
+            padding: 24px 24px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-meta-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .ngo-tag {
+            background: var(--teal-light);
+            color: var(--teal-dark);
+            border-radius: 6px;
+            padding: 3px 10px;
+            font-size: .74rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.15rem;
+            color: var(--navy);
+            line-height: 1.3;
+            margin-bottom: 10px;
+        }
+
+        .card-desc {
+            color: var(--slate);
+            font-size: .875rem;
+            line-height: 1.65;
+            flex: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: .82rem;
+            color: var(--slate);
+        }
+
+        .info-row i {
+            color: var(--teal);
+            width: 14px;
+            text-align: center;
+            font-size: .8rem;
+        }
+
+        .card-footer-actions {
+            display: flex;
+            gap: 10px;
+            padding: 16px 24px;
+            background: var(--sand);
+            border-top: 1px solid #eef1f4;
+        }
+
+        .btn-details {
+            flex: 1;
+            background: transparent;
+            border: 1.5px solid #d0d9e2;
+            color: var(--navy);
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .84rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: border-color .2s, color .2s;
+        }
+
+        .btn-details:hover { border-color: var(--teal); color: var(--teal); }
+
+        .btn-apply-card {
+            flex: 1;
+            background: var(--navy);
+            color: var(--white);
+            border: none;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .84rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: background .2s, transform .15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-apply-card:hover { background: var(--teal); transform: translateY(-1px); }
+
+        .btn-apply-card.applied {
+            background: #28a745;
             cursor: not-allowed;
         }
 
-        .button-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
+        .btn-apply-card.login-prompt {
+            background: var(--slate);
+            cursor: pointer;
         }
 
-        .login-prompt {
-            background-color: #ffc107;
-            color: black;
+        /* ── EMPTY STATE ────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            grid-column: 1 / -1;
         }
+
+        .empty-icon {
+            font-size: 3.5rem;
+            color: #c8d6e0;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p { color: var(--slate); font-size: .9rem; }
+
+        /* ── LOADING SKELETON ───────────────────── */
+        .skeleton {
+            background: linear-gradient(90deg, #e8edf1 25%, #f5f7f9 50%, #e8edf1 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .skeleton-card .s-accent { height: 5px; }
+        .skeleton-card .s-body { padding: 24px; }
+        .skeleton-card .s-line { height: 12px; margin-bottom: 10px; border-radius: 6px; }
+        .skeleton-card .s-title { height: 20px; width: 80%; margin-bottom: 14px; }
+        .skeleton-card .s-short { width: 55%; }
+
+        /* ── RESPONSIVE ─────────────────────────── */
+        @media (max-width: 900px) {
+            .search-grid { grid-template-columns: 1fr 1fr; }
+            .hero-stats { gap: 28px; }
+        }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0 20px; }
+            .navbar-links { display: none; }
+            .hero { padding: 48px 24px 64px; }
+            .hero-stats { gap: 20px; }
+            .search-grid { grid-template-columns: 1fr; }
+            .search-card { padding: 20px; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+        }
+
+        /* ── FADE-IN ANIMATION ──────────────────── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .opp-card { animation: fadeUp .35s ease both; }
     </style>
 </head>
-
 <body>
-    <!-- Temporary dev-only shortcut to dashboard.html -->
-    <div style="position: absolute; top: 10px; left: 10px;">
-        <a id="auth-link" class="btn btn-primary">
-            <i class="fa-solid fa-user"></i> Loading...
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <a class="navbar-brand" href="landingpage.html">
+        <img src="logo.png" alt="CivicConnect Logo">
+        CivicConnect
+    </a>
+
+    <ul class="navbar-links">
+        <li><a href="landingpage.html">Home</a></li>
+        <li><a href="opportunities.html" class="active">Opportunities</a></li>
+        <li><a href="about.html">About Us</a></li>
+    </ul>
+
+    <div class="navbar-right">
+        <a id="auth-link" href="login.html">
+            <i class="fa fa-sign-in-alt"></i> Login
         </a>
     </div>
+</nav>
 
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-badge">
+        <i class="fa fa-globe"></i> Make an Impact
+    </div>
+    <h1>Find Your Next<br><span>Volunteer Opportunity</span></h1>
+    <p>Browse opportunities posted by NGOs and connect with causes that align with your values.</p>
 
-    <div class="header">
-        <h1>Volunteering Opportunities</h1>
+    <div class="hero-stats">
+        <div class="stat">
+            <div class="stat-number" id="stat-opps">—</div>
+            <div class="stat-label">Opportunities</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">3+</div>
+            <div class="stat-label">Active NGOs</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">LB</div>
+            <div class="stat-label">Lebanon-wide</div>
+        </div>
+    </div>
+</section>
+
+<!-- SEARCH PANEL -->
+<div class="search-panel">
+    <div class="search-card">
+        <h6><i class="fa fa-sliders me-2"></i>Filter Opportunities</h6>
+        <div class="search-grid">
+            <div class="field-group">
+                <label>Keyword</label>
+                <input type="text" id="searchName" placeholder="e.g. teaching, clean-up…">
+            </div>
+            <div class="field-group">
+                <label>Location</label>
+                <input type="text" id="searchLocation" placeholder="e.g. Beirut, Tripoli…">
+            </div>
+            <div class="field-group">
+                <label>Field</label>
+                <select id="searchField">
+                    <option value="">All Fields</option>
+                    <option value="education">Education</option>
+                    <option value="health">Health</option>
+                    <option value="environment">Environment</option>
+                    <option value="community">Community</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>&nbsp;</label>
+                <button class="search-btn" onclick="filterOpportunities()">
+                    <i class="fa fa-magnifying-glass"></i> Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN -->
+<main class="main">
+    <div class="section-header">
+        <h2 class="section-title">All Opportunities</h2>
+        <span class="results-count" id="results-count">Loading…</span>
     </div>
 
-    <!-- Search & Filter Section -->
-    <div class="search-filter-container">
-        <input type="text" id="searchName" placeholder="Search by Name">
-        <input type="text" id="searchLocation" placeholder="Search by Location">
-        <input type="date" id="searchDate">
-        <select id="searchDuration">
-            <option value="">Select Duration</option>
-            <option value="short">Short-Term</option>
-            <option value="long">Long-Term</option>
-        </select>
-        <select id="searchField">
-            <option value="">Select Field</option>
-            <option value="education">Education</option>
-            <option value="health">Health</option>
-            <option value="environment">Environment</option>
-            <option value="community">Community</option>
-        </select>
-        <button class="search-button" onclick="filterOpportunities()">Search</button>
+    <div class="cards-grid" id="opportunitiesContainer">
+        <!-- Skeletons -->
+        <div class="skeleton-card">
+            <div class="skeleton s-accent"></div>
+            <div class="s-body">
+                <div class="skeleton s-line s-short"></div>
+                <div class="skeleton s-title"></div>
+                <div class="skeleton s-line"></div>
+                <div class="skeleton s-line"></div>
+                <div class="skeleton s-line s-short"></div>
+            </div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton s-accent"></div>
+            <div class="s-body">
+                <div class="skeleton s-line s-short"></div>
+                <div class="skeleton s-title"></div>
+                <div class="skeleton s-line"></div>
+                <div class="skeleton s-line"></div>
+                <div class="skeleton s-line s-short"></div>
+            </div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton s-accent"></div>
+            <div class="s-body">
+                <div class="skeleton s-line s-short"></div>
+                <div class="skeleton s-title"></div>
+                <div class="skeleton s-line"></div>
+                <div class="skeleton s-line"></div>
+                <div class="skeleton s-line s-short"></div>
+            </div>
+        </div>
     </div>
+</main>
 
-    <!-- Opportunities Feed -->
-    <div class="opportunities-container" id="opportunitiesContainer">
-        <!-- Cards will be injected here dynamically -->
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let allOpportunities = [];
 
-    <script>
-        // Authentication functions
+    function checkAuth() {
+        return localStorage.getItem("token") !== null;
+    }
 
-        function checkAuth() {
-            const token = localStorage.getItem("token");
-            return token != null;  // Return true if a token exists, otherwise false
-        }
-        function updateAuthUI() {
-    const authLink = document.getElementById('auth-link');
-    if (!authLink) return;
+  function updateAuthUI() {
+    const authLink = document.getElementById("auth-link");
+    // Prefer the dedicated navbar-right container for placing logout button
+    const navRight = document.querySelector(".navbar-right") || authLink.parentElement;
+
+    const existingLogout = document.getElementById("logout-btn");
 
     if (checkAuth()) {
-        // User is authenticated - show "View Profile" link.
-        const userId = localStorage.getItem('user_id');
-        authLink.innerHTML = '<i class="fa-solid fa-user"></i> View Profile';
+        const userId = localStorage.getItem("user_id");
+        authLink.innerHTML = '<i class="fa fa-user"></i> My Profile';
         authLink.href = `profile.html?userId=${userId}`;
 
-        // Create and show the log out button if it doesn't already exist
-        let logoutBtn = document.getElementById('logout-btn');
-        if (!logoutBtn) {
-            logoutBtn = document.createElement('button');
-            logoutBtn.id = 'logout-btn';
-            logoutBtn.classList.add('btn', 'btn-danger');
-            logoutBtn.style.marginLeft = '10px';
-            logoutBtn.textContent = 'Log Out';
-            logoutBtn.addEventListener('click', function() {
-                // Remove stored credentials and refresh the page.
+        // Create logout button only once and attach a safe handler
+        if (!existingLogout) {
+            const logoutBtn = document.createElement("button");
+            logoutBtn.id = "logout-btn";
+            logoutBtn.type = "button"; // ensures it won't submit forms
+            logoutBtn.className = "btn btn-outline-light ms-2";
+            logoutBtn.textContent = "Log Out";
+
+            logoutBtn.addEventListener("click", (e) => {
+                e.stopPropagation(); // prevent accidental propagation
+                // Remove only auth-related keys — keep other saved data
                 localStorage.removeItem("token");
                 localStorage.removeItem("user_id");
-                window.location.reload();
+                localStorage.removeItem("ngo_id");
+                // Redirect to landing page (clear, explicit UX)
+                window.location.href = "landingpage.html";
             });
-            authLink.parentElement.appendChild(logoutBtn);
+
+            // Append to the navbar-right so layout is stable and predictable
+            navRight.appendChild(logoutBtn);
         }
     } else {
-        // User not authenticated - show "Login" link.
-        authLink.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Login';
-        authLink.href = 'login.html';
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.remove();
-        }
+        authLink.innerHTML = '<i class="fa fa-sign-in-alt"></i> Login';
+        authLink.href = "login.html";
+        if (existingLogout) existingLogout.remove();
     }
 }
 
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 
+    function renderCards(opportunities) {
+        const container = document.getElementById("opportunitiesContainer");
+        const countEl = document.getElementById("results-count");
 
-        // Application functions
-        async function applyForOpportunity(opportunityId) {
+        countEl.textContent = `${opportunities.length} found`;
 
-            if (!checkAuth()) {
-
-                alert('Please login to apply for opportunities');
-
-                window.location.href = 'login.html';
-
-                return;
-
-            }
-
-
-
-            try {
-
-                const response = await fetch('https://handsconnect-516m.onrender.com/api/applications', {
-
-                    method: 'POST',
-
-                    headers: {
-
-                        'Content-Type': 'application/json',
-
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-
-                    },
-
-                    body: JSON.stringify({ opportunity_id: opportunityId })
-
-                });
-
-
-
-                if (!response.ok) {
-
-                    const errorData = await response.json();
-
-                    throw new Error(errorData.error || 'Application failed');
-
-                }
-
-
-
-                const data = await response.json();
-
-
-
-                // Update all apply buttons for this opportunity
-
-                const applyButtons = document.querySelectorAll(`.apply-now[data-opportunity-id="${opportunityId}"]`);
-
-                applyButtons.forEach(button => {
-
-                    button.textContent = 'Applied';
-
-                    button.classList.add('applied');
-
-                    button.disabled = true;
-
-                });
-
-
-
-                alert('Application submitted successfully!');
-
-            } catch (error) {
-
-                console.error('Error:', error);
-
-                alert(error.message);
-
-            }
-
+        if (opportunities.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fa fa-binoculars"></i></div>
+                    <h3>No opportunities found</h3>
+                    <p>Try adjusting your search filters or check back later.</p>
+                </div>`;
+            return;
         }
 
-        function filterOpportunities() {
-    const filters = {
-        title: document.getElementById("searchName").value.toLowerCase(),
-        location: document.getElementById("searchLocation").value.toLowerCase(),
-        "start-date": document.getElementById("searchDate").value,
-        duration: document.getElementById("searchDuration").value,
-        field: document.getElementById("searchField").value
-    };
+        container.innerHTML = "";
+        opportunities.forEach((o, i) => {
+            const card = document.createElement("div");
+            card.className = "opp-card";
+            card.dataset.title    = (o.title || '').toLowerCase();
+            card.dataset.location = (o.location || '').toLowerCase();
+            card.dataset.desc     = (o.description || '').toLowerCase();
+            card.style.animationDelay = `${i * 0.05}s`;
 
-    document.querySelectorAll(".opportunity-card").forEach(card => {
-        const matches = Object.entries(filters).every(([key, value]) => {
-            if (!value) return true;
-            const cardValue = card.getAttribute(`data-${key}`);
-            if (!cardValue) return false;
-            return key === 'start-date' ? cardValue === value : cardValue.toLowerCase().includes(value);
-        });
-        card.style.display = matches ? "block" : "none";
-    });
-}
+            const applyBtn = checkAuth()
+                ? `<button class="btn-apply-card${o.has_applied ? ' applied' : ''}"
+                       onclick="applyForOpportunity(${o.opportunity_id}, this)"
+                       ${o.has_applied ? 'disabled' : ''}>
+                       <i class="fa ${o.has_applied ? 'fa-check' : 'fa-bolt'}"></i>
+                       ${o.has_applied ? 'Applied' : 'Apply Now'}
+                   </button>`
+                : `<button class="btn-apply-card login-prompt"
+                       onclick="location.href='login.html'">
+                       <i class="fa fa-lock"></i> Login to Apply
+                   </button>`;
 
-
-        // Load opportunities
-        async function loadOpportunities() {
-            try {
-                const response = await fetch("https://handsconnect-516m.onrender.com/api/opportunities/all");
-                if (!response.ok) throw new Error('Failed to load opportunities');
-
-                const data = await response.json();
-                const container = document.getElementById("opportunitiesContainer");
-                container.innerHTML = data.length ? "" : "<p>No opportunities found.</p>";
-
-                data.forEach(opportunity => {
-                    const card = document.createElement("div");
-                    card.classList.add("opportunity-card");
-
-                    // Set data attributes
-                    ['title', 'location', 'start_date', 'duration', 'field'].forEach(attr => {
-                        card.setAttribute(`data-${attr.replace('_', '-')}`,
-                            opportunity[attr] || (attr === 'duration' ? 'short' : 'community'));
-                    });
-
-                    // Modified button logic
-                    const buttonHTML = checkAuth() ?
-                        `<button class="${opportunity.has_applied ? 'btn-apply applied' : 'btn-apply apply-now'}" 
-                        data-opportunity-id="${opportunity.opportunity_id}" 
-                        ${opportunity.has_applied ? 'disabled' : ''}>
-                    ${opportunity.has_applied ? 'Applied' : 'Apply'}
-                </button>`
-                        :
-                        `<button class="btn-apply login-prompt" 
-                        onclick="window.location.href='login.html'">
-                    Login to Apply
-                </button>`;
-
-                    card.innerHTML = `
-                <h2 class="opportunity-title">${opportunity.title}</h2>
-                <p class="opportunity-ngo">From ${opportunity.start_date} to ${opportunity.end_date}</p>
-                <p><strong>Location:</strong> ${opportunity.location}</p>
-                <p>${opportunity.description}</p>
-                <div class="button-container">
-                    <a href="detailedView.html?id=${opportunity.opportunity_id}" class="btn-apply">View Details</a>
-                    ${buttonHTML}
+            card.innerHTML = `
+                <div class="card-accent"></div>
+                <div class="card-body">
+                    <div class="card-meta-top">
+                        <span class="ngo-tag"><i class="fa fa-building me-1"></i>NGO</span>
+                    </div>
+                    <div class="card-title">${o.title}</div>
+                    <div class="card-desc">${o.description}</div>
+                    <div class="card-info">
+                        <div class="info-row">
+                            <i class="fa fa-location-dot"></i>
+                            <span>${o.location || 'Location TBD'}</span>
+                        </div>
+                        <div class="info-row">
+                            <i class="fa fa-calendar-day"></i>
+                            <span>${formatDate(o.start_date)} → ${formatDate(o.end_date)}</span>
+                        </div>
+                    </div>
                 </div>
-            `;
+                <div class="card-footer-actions">
+                    <a href="detailedView.html?id=${o.opportunity_id}" class="btn-details">
+                        <i class="fa fa-arrow-up-right-from-square me-1"></i> Details
+                    </a>
+                    ${applyBtn}
+                </div>`;
 
-                    if (checkAuth() && !opportunity.has_applied) {
-                        card.querySelector('.apply-now').addEventListener('click', (e) => {
-                            e.preventDefault();
-                            applyForOpportunity(opportunity.opportunity_id);
-                        });
-                    }
+            container.appendChild(card);
+        });
 
-                    container.appendChild(card);
-                });
-            } catch (error) {
-                console.error("Error loading opportunities:", error);
-                document.getElementById("opportunitiesContainer").innerHTML = `
-            <div class="alert alert-danger">
-                Error loading opportunities: ${error.message}
-            </div>
-        `;
-            }
+        document.getElementById("stat-opps").textContent = opportunities.length;
+    }
+
+    function filterOpportunities() {
+        const keyword  = document.getElementById("searchName").value.toLowerCase().trim();
+        const location = document.getElementById("searchLocation").value.toLowerCase().trim();
+        const field    = document.getElementById("searchField").value.toLowerCase();
+
+        const filtered = allOpportunities.filter(o => {
+            const matchKeyword  = !keyword  || o.title.toLowerCase().includes(keyword) || (o.description || '').toLowerCase().includes(keyword);
+            const matchLocation = !location || (o.location || '').toLowerCase().includes(location);
+            const matchField    = !field    || (o.title + ' ' + (o.description || '')).toLowerCase().includes(field);
+            return matchKeyword && matchLocation && matchField;
+        });
+
+        renderCards(filtered);
+    }
+
+    // Allow pressing Enter in search inputs
+    ['searchName','searchLocation'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+            if (e.key === 'Enter') filterOpportunities();
+        });
+    });
+
+    async function applyForOpportunity(id, btn) {
+        if (!checkAuth()) {
+            window.location.href = "login.html";
+            return;
         }
 
-        // Initialize
-        document.addEventListener("DOMContentLoaded", () => {
-            updateAuthUI();
-            loadOpportunities();
-            console.log(checkAuth());
-        });
-    </script>
-</body>
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…';
 
+        try {
+            const res = await fetch("/api/applications", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ opportunity_id: id })
+            });
+
+            if (res.ok) {
+                btn.innerHTML = '<i class="fa fa-check"></i> Applied';
+                btn.classList.add('applied');
+            } else {
+                const data = await res.json();
+                alert(data.error || "Application failed");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-bolt"></i> Apply Now';
+            }
+        } catch (err) {
+            alert("Network error. Please try again.");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa fa-bolt"></i> Apply Now';
+        }
+    }
+
+    async function loadOpportunities() {
+        try {
+            const token = localStorage.getItem("token");
+            const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+            const res  = await fetch("/api/opportunities/all", { headers });
+            const data = await res.json();
+            allOpportunities = Array.isArray(data) ? data : [];
+            renderCards(allOpportunities);
+        } catch (err) {
+            document.getElementById("opportunitiesContainer").innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fa fa-triangle-exclamation"></i></div>
+                    <h3>Could not load opportunities</h3>
+                    <p>Make sure the server is running and try refreshing.</p>
+                </div>`;
+            document.getElementById("results-count").textContent = "Error";
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        updateAuthUI();
+        loadOpportunities();
+    });
+</script>
+
+</body>
 </html>

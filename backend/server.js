@@ -57,7 +57,7 @@ app.use(express.json());
 const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:5500',
-    'https://handsconnect-516m.onrender.com'
+    'https://CivicConnect-516m.onrender.com'
 ];
 
 app.use(cors({
@@ -76,7 +76,7 @@ app.use(cors({
 }));
 
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://handsconnect-516m.onrender.com'); // Your Render frontend
+    res.header('Access-Control-Allow-Origin', 'https://CivicConnect-516m.onrender.com'); // Your Render frontend
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET,POST,DELETE,PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
@@ -164,77 +164,118 @@ app.post('/api/register', async (req, res) => {
     }
 
     let connection;
+
     try {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        const [users] = await connection.execute('SELECT * FROM Users WHERE email = ?', [email]);
-        if (users.length > 0) {
+        // 1️⃣ Check duplicate email
+        const [existingUsers] = await connection.execute(
+            'SELECT user_id FROM Users WHERE email = ?',
+            [email]
+        );
+
+        if (existingUsers.length > 0) {
             await connection.rollback();
             connection.release();
             return res.status(400).json({ error: 'Email already exists' });
         }
 
+        // 2️⃣ Create user
         const hashedPassword = await bcrypt.hash(password, 10);
         const verificationToken = crypto.randomBytes(32).toString('hex');
 
         const [userResult] = await connection.execute(
-            `INSERT INTO Users (name, email, password_hash, role, Verified, verification_token) 
+            `INSERT INTO Users 
+                (name, email, password_hash, role, Verified, verification_token) 
              VALUES (?, ?, ?, ?, ?, ?)`,
             [name, email, hashedPassword, role, 'NO', verificationToken]
         );
+
         const userId = userResult.insertId;
 
+        // 3️⃣ Role-specific inserts
         if (role === 'Volunteer') {
             if (!volunteer?.city || !volunteer?.dob) {
                 throw new Error('Missing city or date of birth for volunteer');
             }
+
             await connection.execute(
-                `INSERT INTO Volunteers (user_id, phone, city, skills, Date_of_Birth) 
+                `INSERT INTO Volunteers 
+                    (user_id, phone, city, skills, Date_of_Birth)
                  VALUES (?, ?, ?, ?, ?)`,
-                [userId, volunteer.phone || null, volunteer.city, volunteer.skills || null, volunteer.dob]
+                [
+                    userId,
+                    volunteer.phone || null,
+                    volunteer.city,
+                    volunteer.skills || null,
+                    volunteer.dob
+                ]
             );
         }
-        else if (role === 'NGO') {
+
+        if (role === 'NGO') {
             if (!ngo?.name || !ngo?.description || !ngo?.address) {
                 throw new Error('Missing NGO name, description, or address');
             }
 
             const [ngoResult] = await connection.execute(
-                `INSERT INTO NGOs (name, description, address, user_id) 
+                `INSERT INTO NGOs 
+                    (name, description, address, user_id)
                  VALUES (?, ?, ?, ?)`,
                 [ngo.name, ngo.description, ngo.address, userId]
             );
 
-            const ngoId = ngoResult.insertId;
-
             await connection.execute(
-                'UPDATE Users SET ngo_id = ? WHERE user_id = ?',
-                [ngoId, userId]
+                `UPDATE Users SET ngo_id = ? WHERE user_id = ?`,
+                [ngoResult.insertId, userId]
             );
         }
 
+        // 4️⃣ Commit DB transaction
         await connection.commit();
         connection.release();
 
-        const verificationLink = `https://handsconnect-516m.onrender.com/api/verify-email?token=${verificationToken}`;
-        const transporter = await createTransporter();
+        // 5️⃣ Send verification email (NON-BLOCKING)
+        try {
+            const verificationLink =
+                `http://localhost:3000/api/verify-email?token=${verificationToken}`;
 
-        await transporter.sendMail({
-            from: `HandsConnect <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Email Verification',
-            html: `<p>Click the link to verify your email: <a href="${verificationLink}">Verify Email</a></p>`
+            const transporter = await createTransporter();
+
+            await transporter.sendMail({
+                from: `CivicConnect <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: 'Email Verification',
+                html: `
+                    <p>Hello ${name},</p>
+                    <p>Please verify your email by clicking the link below:</p>
+                    <a href="${verificationLink}">Verify Email</a>
+                `
+            });
+        } catch (emailErr) {
+            console.error('⚠️ Email sending failed (ignored):', emailErr.message);
+        }
+
+        // 6️⃣ Final success response
+        return res.status(201).json({
+            message: 'Registration successful. Check your email to verify your account.'
         });
 
-        res.status(201).json({ message: 'Registration successful. Check your email to verify your account.' });
     } catch (err) {
-        console.error('Error:', err);
-        res.status(500).json({
-            error: err.message || 'Internal server error'
+        console.error('❌ REGISTER ERROR:', err.message);
+
+        if (connection) {
+            await connection.rollback();
+            connection.release();
+        }
+
+        return res.status(500).json({
+            error: err.message
         });
     }
 });
+
 
 // Email verification endpoint
 app.get('/api/verify-email', async (req, res) => {
@@ -344,11 +385,11 @@ app.post('/api/request-password-reset', async (req, res) => {
             [resetToken, resetTokenExpiry, user.user_id]
         );
 
-        const resetLink = `https://handsconnect-516m.onrender.com/reset-password.html?token=${resetToken}`;
+        const resetLink = `https://CivicConnect-516m.onrender.com/reset-password.html?token=${resetToken}`;
         const transporter = await createTransporter();
 
         await transporter.sendMail({
-            from: `HandsConnect <${process.env.EMAIL_USER}>`,
+            from: `CivicConnect <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Password Reset',
             html: `<p>Click the link to reset your password: <a href="${resetLink}">Reset Password</a></p>`
@@ -498,7 +539,7 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
             if (user.length > 0) {
                 const transporter = await createTransporter();
                 transporter.sendMail({
-                    from: `HandsConnect <${process.env.EMAIL_USER}>`,
+                    from: `CivicConnect <${process.env.EMAIL_USER}>`,
                     to: user[0].email,
                     subject: 'Application Submitted',
                     html: `
@@ -857,7 +898,7 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
         // Send email notification
         const transporter = await createTransporter();
         await transporter.sendMail({
-            from: `HandsConnect <${process.env.EMAIL_USER}>`,
+            from: `CivicConnect <${process.env.EMAIL_USER}>`,
             to: application[0].email,
             subject: `Application ${status.toUpperCase()}`,
             html: `<p>Dear ${application[0].name},</p>
@@ -1161,5 +1202,3 @@ app.post('/api/upload-profile-picture',
         }
     }
 );
-
-
