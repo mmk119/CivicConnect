@@ -1,0 +1,78 @@
+/* ===== BACKGROUND ===== */
+body {
+    background: linear-gradient(180deg, #0d1f3c, #142c52);
+    color: white;
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ===== CARD ===== */
+.container {
+    max-width: 500px;
+    width: 90%;
+    padding: 30px;
+
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+/* ===== TITLE (FIXED WHITE) ===== */
+.title {
+    text-align: center;
+    margin-bottom: 25px;
+    color: white !important;
+}
+
+/* ===== LABELS ===== */
+label {
+    color: white;
+    font-weight: 500;
+}
+
+/* ===== INPUTS ===== */
+.form-control {
+    background: rgba(255,255,255,0.9);
+    border-radius: 10px;
+    border: none;
+    color: black;
+    padding: 10px;
+}
+
+/* ===== BUTTONS ===== */
+.btn-success {
+    background: #1e4fa3;
+    border: none;
+    border-radius: 10px;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #163c7a;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    border: none;
+    border-radius: 10px;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+/* ===== BUTTON LAYOUT ===== */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
