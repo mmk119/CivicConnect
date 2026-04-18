@@ -5,70 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login | CivicConnect</title>
 
-    <!-- Bootstrap (utilities only) -->
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
+        /* ===== BACKGROUND (match system) ===== */
         body {
             margin: 0;
             padding: 0;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(180deg, #e9fbfb, #9fe7e5);
+
+            background: linear-gradient(180deg, #0d1f3c, #142c52);
+
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
         }
 
-        /* Match Reset Password width */
+        /* ===== GLASS CARD ===== */
         .auth-card {
             max-width: 560px;
             width: 100%;
-            padding: 26px 36px;
+            padding: 30px 40px;
             border-radius: 22px;
-            background: #fafaf9;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.14);
+
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+
             text-align: center;
+            color: white;
         }
 
         .logo {
-            width: 120px;
+            width: 110px;
             margin-bottom: 14px;
         }
 
+        /* ===== TEXT FIX (IMPORTANT) ===== */
         h3 {
             font-weight: 600;
             margin-bottom: 6px;
-            color: #1f1f1f;
+            color: white !important;
         }
 
         .subtitle {
             font-size: 14px;
-            color: #6c757d;
-            margin-bottom: 16px;
+            color: #d1d5db;
+            margin-bottom: 18px;
         }
 
         .form-label {
             font-weight: 500;
-            color: #2b2b2b;
+            color: white;
             margin-bottom: 6px;
         }
 
+        /* ===== INPUTS ===== */
         .form-control {
             padding: 14px;
             border-radius: 12px;
-            border: 1px solid #ddd;
+            border: none;
             font-size: 15px;
+
+            background: rgba(255,255,255,0.9);
+            color: black;
         }
 
         .form-control:focus {
-            border-color: #0fb9b1;
-            box-shadow: 0 0 0 2px rgba(15, 185, 177, 0.25);
+            border-color: #3ddbd9;
+            box-shadow: 0 0 0 2px rgba(61, 219, 217, 0.25);
         }
 
+        /* ===== BUTTON ===== */
         .primary-btn {
-            margin-top: 10px;
-            background: linear-gradient(135deg, #0fb9b1, #3ddbd9);
+            margin-top: 12px;
+            background: linear-gradient(135deg, #1e4fa3, #3ddbd9);
             color: #fff;
             border: none;
             border-radius: 14px;
@@ -80,12 +95,13 @@
         }
 
         .primary-btn:hover {
-            background: linear-gradient(135deg, #0aa39c, #2ecbc8);
+            background: linear-gradient(135deg, #163c7a, #2ecbc8);
             transform: translateY(-1px);
         }
 
+        /* ===== LINKS ===== */
         .link {
-            color: #0fb9b1;
+            color: #3ddbd9;
             text-decoration: none;
             font-weight: 500;
         }
@@ -98,93 +114,99 @@
             font-size: 13px;
             margin-top: 4px;
         }
+
+        .text-light-custom {
+            color: #d1d5db;
+        }
     </style>
 </head>
 
 <body>
 
-    <div class="auth-card">
-        <img src="logo.png" alt="CivicConnect Logo" class="logo">
+<div class="auth-card">
+    <img src="logo.png" alt="CivicConnect Logo" class="logo">
 
-        <h3>Welcome Back</h3>
-        <p class="subtitle">Sign in to continue your journey.</p>
+    <h3>Welcome Back</h3>
+    <p class="subtitle">Sign in to continue your journey.</p>
 
-        <form id="loginForm" novalidate>
-            <div class="mb-3 text-start">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
-                <div class="text-danger" id="emailError"></div>
-            </div>
+    <form id="loginForm" novalidate>
+        <div class="mb-3 text-start">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
+            <div class="text-danger" id="emailError"></div>
+        </div>
 
-            <div class="mb-3 text-start">
-                <label class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" placeholder="Enter password" required>
-                <div class="text-danger" id="passwordError"></div>
-            </div>
+        <div class="mb-3 text-start">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+            <div class="text-danger" id="passwordError"></div>
+        </div>
 
-            <button type="submit" class="primary-btn">
-                Login
-            </button>
+        <button type="submit" class="primary-btn">
+            Login
+        </button>
 
-            <div class="text-center mt-3">
-                <a href="forgot-password.html" class="link">Forgot Password?</a>
-            </div>
+        <div class="text-center mt-3">
+            <a href="forgot-password.html" class="link">Forgot Password?</a>
+        </div>
 
-            <div class="text-center mt-2">
-                <span>Don't have an account? <a href="register.html" class="link">Sign Up</a></span>
-            </div>
-        </form>
-    </div>
+        <div class="text-center mt-2 text-light-custom">
+            Don't have an account?
+            <a href="register.html" class="link">Sign Up</a>
+        </div>
+    </form>
+</div>
 
-    <script>
-        document.getElementById("loginForm").addEventListener("submit", function (event) {
-            event.preventDefault();
+<script>
+document.getElementById("loginForm").addEventListener("submit", function (event) {
+    event.preventDefault();
 
-            const email = document.getElementById("email").value.trim();
-            const password = document.getElementById("password").value;
-            const emailError = document.getElementById("emailError");
-            const passwordError = document.getElementById("passwordError");
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const emailError = document.getElementById("emailError");
+    const passwordError = document.getElementById("passwordError");
 
-            emailError.textContent = "";
-            passwordError.textContent = "";
+    emailError.textContent = "";
+    passwordError.textContent = "";
 
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailPattern.test(email)) {
-                emailError.textContent = "Invalid email format.";
-                return;
-            }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+        emailError.textContent = "Invalid email format.";
+        return;
+    }
 
-            if (password.length < 8) {
-                passwordError.textContent = "Password must be at least 8 characters.";
-                return;
-            }
+    if (password.length < 8) {
+        passwordError.textContent = "Password must be at least 8 characters.";
+        return;
+    }
 
-            fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    emailError.textContent = data.error;
-                    return;
-                }
+    fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            emailError.textContent = data.error;
+            return;
+        }
 
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("userRole", data.user.role);
-                localStorage.setItem("user_id", data.user.id);
-                if (data.user.ngo_id) {
-                    localStorage.setItem("ngo_id", data.user.ngo_id);
-                }
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userRole", data.user.role);
+        localStorage.setItem("user_id", data.user.id);
 
-                window.location.href = data.redirect || "dashboard.html";
-            })
-            .catch(() => {
-                emailError.textContent = "Login failed. Please try again.";
-            });
-        });
-    </script>
+        if (data.user.ngo_id) {
+            localStorage.setItem("ngo_id", data.user.ngo_id);
+        }
+
+        window.location.href = data.redirect || "dashboard.html";
+    })
+    .catch(() => {
+        emailError.textContent = "Login failed. Please try again.";
+    });
+});
+</script>
 
 </body>
 </html>
