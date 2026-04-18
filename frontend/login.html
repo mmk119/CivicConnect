@@ -172,6 +172,7 @@
                 }
 
                 localStorage.setItem("token", data.token);
+                localStorage.setItem("userRole", data.user.role);
                 localStorage.setItem("user_id", data.user.id);
                 if (data.user.ngo_id) {
                     localStorage.setItem("ngo_id", data.user.ngo_id);

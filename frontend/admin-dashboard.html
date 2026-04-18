@@ -5,6 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = localStorage.getItem("token");
+            const userRole = localStorage.getItem("userRole");
+
+            if (!token) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            if (userRole !== "Admin") {
+                alert("Access denied. Admin privileges required.");
+                window.location.href = "dashboard.html";
+                return;
+            }
+        });
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;

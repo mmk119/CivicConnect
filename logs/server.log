@@ -1,0 +1,12 @@
+[2026-04-18T10:51:49.005Z] INFO: Server is starting...
+[2026-04-18T10:51:49.096Z] INFO: OAuth2 client initialized with refresh token from environment
+[2026-04-18T10:51:49.101Z] INFO: 🚀 Server running at http://localhost:3000
+[2026-04-18T10:51:49.206Z] ERROR: ❌ Database connection failed:
+[2026-04-18T10:59:49.147Z] INFO: Server is starting...
+[2026-04-18T10:59:49.162Z] INFO: OAuth2 client initialized with refresh token from environment
+[2026-04-18T10:59:49.167Z] INFO: 🚀 Server running at http://localhost:3000
+[2026-04-18T10:59:49.211Z] ERROR: ❌ Database connection failed:
+[2026-04-18T11:04:26.168Z] INFO: Server is starting...
+[2026-04-18T11:04:26.186Z] INFO: OAuth2 client initialized with refresh token from environment
+[2026-04-18T11:04:26.190Z] INFO: 🚀 Server running at http://localhost:3000
+[2026-04-18T11:04:26.223Z] ERROR: ❌ Database connection failed:

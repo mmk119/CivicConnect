@@ -155,6 +155,14 @@ function authenticateToken(req, res, next) {
     });
 }
 
+function requireAdmin(req, res, next) {
+    if (!req.user || req.user.role !== 'Admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    next();
+}
+
 // Registration endpoint
 app.post('/api/register', async (req, res) => {
     const { name, email, password, role, volunteer, ngo } = req.body;
@@ -316,6 +324,10 @@ app.post('/api/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        if (user.account_status === 'banned') {
+            return res.status(403).json({ error: 'Your account has been banned. Please contact support.' });
         }
 
         let redirectPath;
@@ -584,7 +596,7 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
         res.status(500).json({ message: "Internal server error." });
     }
 });
-app.post('/api/opportunities/ins', async (req, res) => {
+app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
     const { title, description, start_date, end_date, location, ngo_id } = req.body;
 
     if (!title || !description || !start_date || !end_date || !location) {
@@ -592,6 +604,15 @@ app.post('/api/opportunities/ins', async (req, res) => {
     }
 
     try {
+        const [ngos] = await db.execute(
+            'SELECT approval_status FROM NGOs WHERE user_id = ?',
+            [req.user.user_id]
+        );
+
+        if (ngos.length === 0 || ngos[0].approval_status !== 'approved') {
+            return res.status(403).json({ error: "Your NGO account is pending approval. You cannot post opportunities yet." });
+        }
+
         const query = `
             INSERT INTO Opportunities (title, description, start_date, end_date, location, ngo_id)
             VALUES (?, ?, ?, ?, ?, ?)`;
@@ -731,16 +752,18 @@ app.get('/api/protected', authenticateToken, (req, res) => {
 });
 
 // Admin endpoints
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const [users] = await db.execute('SELECT * FROM Users');
+        const [users] = await db.execute(
+            'SELECT user_id, name, email, role, Verified, account_status, created_at FROM Users'
+        );
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: "Failed to fetch users" });
     }
 });
 
-app.post('/api/admin/ngos/:ngo_id/approve', async (req, res) => {
+app.post('/api/admin/ngos/:ngo_id/approve', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { ngo_id } = req.params;
         await db.execute(
@@ -753,7 +776,7 @@ app.post('/api/admin/ngos/:ngo_id/approve', async (req, res) => {
     }
 });
 
-app.post('/api/admin/ngos/:ngo_id/reject', async (req, res) => {
+app.post('/api/admin/ngos/:ngo_id/reject', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { ngo_id } = req.params;
         await db.execute(
@@ -766,7 +789,7 @@ app.post('/api/admin/ngos/:ngo_id/reject', async (req, res) => {
     }
 });
 
-app.get('/api/admin/ngos/pending', async (req, res) => {
+app.get('/api/admin/ngos/pending', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const [ngos] = await db.execute(
             'SELECT ngo_id, name, description FROM NGOs WHERE approval_status = "pending"'
@@ -777,7 +800,7 @@ app.get('/api/admin/ngos/pending', async (req, res) => {
     }
 });
 
-app.delete('/api/admin/users/:id', async (req, res) => {
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         await db.execute('DELETE FROM Users WHERE user_id = ?', [req.params.id]);
         res.json({ message: "User deleted" });
@@ -786,7 +809,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
     }
 });
 
-app.patch('/api/admin/users/:id/status', async (req, res) => {
+app.patch('/api/admin/users/:id/status', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
