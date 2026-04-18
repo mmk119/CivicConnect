@@ -36,39 +36,31 @@
         /* ── NAVBAR ─────────────────────────────── */
         .navbar {
             background: linear-gradient(90deg, #007BFF, #FF6B00);
-            padding: 0 40px;
-            height: 68px;
+            padding: 15px 30px;
             position: fixed;
             top: 0; left: 0; right: 0;
             z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 20px rgba(0,0,0,.18);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
 
         .navbar-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             text-decoration: none;
-            font-family: 'Playfair Display', serif;
-            font-size: 1.4rem;
-            color: var(--white) !important;
-            letter-spacing: .3px;
-        }
-
-        .navbar-brand img {
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,.25);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff !important;
+            cursor: pointer;
         }
 
         .brand-logo-mark {
             position: relative;
-            flex: 0 0 50px;
-            width: 50px;
-            height: 50px;
+            flex: 0 0 58px;
+            width: 58px;
+            height: 58px;
             overflow: hidden;
             border: 2px solid rgba(255,255,255,.95);
             border-radius: 10px;
@@ -80,35 +72,31 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 74px;
-            height: 74px;
+            width: 86px;
+            height: 86px;
             max-width: none;
             transform: translate(-50%, -46%);
             border: 0;
             border-radius: 0;
         }
 
-        .navbar-links {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            list-style: none;
+        .navbar-brand:hover .brand-logo-mark {
+            transform: scale(1.05);
         }
 
-        .navbar-links a {
-            color: rgba(255,255,255,.75);
-            text-decoration: none;
-            font-size: .9rem;
+        .nav-link {
+            color: #fff !important;
             font-weight: 500;
-            padding: 6px 14px;
-            border-radius: 8px;
-            transition: all .2s;
+            transition: color 0.3s ease, transform 0.3s ease;
         }
 
-        .navbar-links a:hover,
-        .navbar-links a.active {
-            color: var(--white);
-            background: rgba(255,255,255,.12);
+        .nav-link:hover {
+            color: #ffe6cc !important;
+            transform: translateY(-2px);
+        }
+
+        .auth-links .nav-link {
+            margin-left: 15px;
         }
 
         .navbar-right {
@@ -116,24 +104,6 @@
             align-items: center;
             gap: 10px;
         }
-
-        #auth-link {
-            background: #FF6B00;
-            color: var(--white) !important;
-            border: none;
-            border-radius: 10px;
-            padding: 8px 18px;
-            font-size: .88rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: background .2s, transform .15s;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        #auth-link:hover { background: #e55a00; transform: translateY(-1px); }
 
         #logout-btn {
             background: transparent;
@@ -154,7 +124,7 @@
 
         /* ── HERO ───────────────────────────────── */
         .hero {
-            margin-top: 68px;
+            margin-top: 88px;
             background: var(--navy);
             padding: 64px 40px 80px;
             text-align: center;
@@ -554,8 +524,7 @@
         }
 
         @media (max-width: 600px) {
-            .navbar { padding: 0 20px; }
-            .navbar-links { display: none; }
+            .navbar { padding: 15px 20px; }
             .hero { padding: 48px 24px 64px; }
             .hero-stats { gap: 20px; }
             .search-grid { grid-template-columns: 1fr; }
@@ -576,7 +545,8 @@
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar">
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+  <div class="container-fluid">
     <a class="navbar-brand" href="landingpage.html">
         <span class="brand-logo-mark" aria-hidden="true">
             <img src="logo.png" alt="">
@@ -584,17 +554,21 @@
         CivicConnect
     </a>
 
-    <ul class="navbar-links">
-        <li><a href="landingpage.html">Home</a></li>
-        <li><a href="opportunities.html" class="active">Opportunities</a></li>
-        <li><a href="about.html">About Us</a></li>
-    </ul>
-
-    <div class="navbar-right">
-        <a id="auth-link" href="login.html">
-            <i class="fa fa-sign-in-alt"></i> Login
-        </a>
+    <div class="center-nav">
+        <ul class="navbar-nav">
+            <li class="nav-item"><a class="nav-link" href="landingpage.html">Home</a></li>
+            <li class="nav-item"><a class="nav-link active" href="opportunities.html">Opportunities</a></li>
+            <li class="nav-item"><a class="nav-link" href="about.html">About Us</a></li>
+        </ul>
     </div>
+
+    <div class="auth-links navbar-right">
+        <ul class="navbar-nav">
+            <li class="nav-item"><a id="auth-link" class="nav-link" href="login.html">Login</a></li>
+            <li class="nav-item" id="register-nav-item"><a class="nav-link btn btn-light text-primary px-3" href="register.html">Register</a></li>
+        </ul>
+    </div>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -708,19 +682,21 @@
     const authLink = document.getElementById("auth-link");
     // Prefer the dedicated navbar-right container for placing logout button
     const navRight = document.querySelector(".navbar-right") || authLink.parentElement;
+    const registerNavItem = document.getElementById("register-nav-item");
 
     const existingLogout = document.getElementById("logout-btn");
 
     if (checkAuth()) {
         const userId = localStorage.getItem("user_id");
-        authLink.innerHTML = '<i class="fa fa-user"></i> My Profile';
+        authLink.innerHTML = 'My Profile';
         authLink.href = `profile.html?userId=${userId}`;
+        if (registerNavItem) registerNavItem.style.display = "none";
 
         // Create logout button only once and attach a safe handler
         if (!existingLogout) {
             const logoutBtn = document.createElement("button");
             logoutBtn.id = "logout-btn";
-            logoutBtn.type = "button"; // ensures it won't submit forms
+            logoutBtn.type = "button";
             logoutBtn.className = "btn btn-outline-light ms-2";
             logoutBtn.textContent = "Log Out";
 
@@ -738,8 +714,9 @@
             navRight.appendChild(logoutBtn);
         }
     } else {
-        authLink.innerHTML = '<i class="fa fa-sign-in-alt"></i> Login';
+        authLink.innerHTML = 'Login';
         authLink.href = "login.html";
+        if (registerNavItem) registerNavItem.style.display = "";
         if (existingLogout) existingLogout.remove();
     }
 }

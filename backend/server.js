@@ -594,15 +594,20 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
 
     try {
         const [application] = await db.execute(`
-            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name
+            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name, o.ngo_id
             FROM Applications a
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
             WHERE a.application_id = ?
         `, [application_id]);
 
         if (application.length === 0) {
             return res.status(404).json({ error: 'Application not found' });
+        }
+
+        if (!req.user.ngo_id || Number(application[0].ngo_id) !== Number(req.user.ngo_id)) {
+            return res.status(403).json({ error: 'You are not allowed to update this application.' });
         }
 
         await db.execute(

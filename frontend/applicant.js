@@ -18,20 +18,22 @@ function loadApplicants(ngoId) {
     data.forEach(applicant => {
       const listItem = document.createElement("li");
       listItem.className = "list-group-item d-flex flex-column";
+      const status = String(applicant.status || "pending").toLowerCase();
+      const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
       // buttons same as before…
       let buttonsHTML = "";
-      if (applicant.status !== "Accepted") {
+      if (status !== "accepted") {
         buttonsHTML += `
           <button class="btn btn-success btn-sm me-2"
-                  onclick="updateStatus(${applicant.id}, 'Accepted')">
+                  onclick="updateStatus(${applicant.id}, 'accepted')">
             Accept
           </button>`;
       }
-      if (applicant.status !== "Rejected") {
+      if (status !== "rejected") {
         buttonsHTML += `
           <button class="btn btn-danger btn-sm"
-                  onclick="updateStatus(${applicant.id}, 'Rejected')">
+                  onclick="updateStatus(${applicant.id}, 'rejected')">
             Reject
           </button>`;
       }
@@ -42,7 +44,7 @@ function loadApplicants(ngoId) {
             <strong>${applicant.name}</strong> &lt;${applicant.email}&gt;
           </div>
           <div>
-            <span class="badge bg-secondary">${applicant.status}</span>
+            <span class="badge bg-secondary">${statusLabel}</span>
           </div>
         </div>
 
@@ -76,7 +78,7 @@ function loadApplicants(ngoId) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
-      body: JSON.stringify({ status })  // now 'Accepted' or 'Rejected'
+      body: JSON.stringify({ status })
     })
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
