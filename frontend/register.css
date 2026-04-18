@@ -1,0 +1,112 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", sans-serif;
+
+    /* SAME DARK STYLE AS OTHER PAGES */
+    background:
+        linear-gradient(rgba(10,25,50,0.85), rgba(10,25,50,0.95)),
+        url('handinhand.jpeg') no-repeat center center fixed;
+
+    background-size: cover;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/* CARD */
+.auth-card {
+    max-width: 460px;
+    width: 100%;
+    padding: 30px;
+    border-radius: 20px;
+
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+
+    color: white;
+}
+
+/* TEXT */
+h3 {
+    text-align: center;
+    font-weight: 600;
+    color: white;
+}
+
+.subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.7);
+}
+
+/* LABELS */
+.form-label {
+    color: rgba(255,255,255,0.85);
+}
+
+/* INPUTS */
+.form-control {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.form-control::placeholder {
+    color: rgba(255,255,255,0.5);
+}
+
+.form-control:focus {
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 2px rgba(77,171,247,0.3);
+    background: rgba(255,255,255,0.1);
+}
+
+/* BUTTON (🔥 YOUR REQUEST: ORANGE → BLUE) */
+.primary-btn {
+    background: linear-gradient(135deg, #ff7a18, #0d6efd);
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-weight: 600;
+    color: white;
+    width: 100%;
+    margin-top: 12px;
+    transition: 0.3s;
+}
+
+.primary-btn:hover {
+    transform: scale(1.03);
+    opacity: 0.9;
+}
+
+/* BACK BUTTON */
+.secondary-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    width: 100%;
+    margin-top: 10px;
+    color: white;
+}
+
+.secondary-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* PASSWORD ICON */
+.password-eye {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: white;
+}
