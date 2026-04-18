@@ -365,7 +365,6 @@ app.post('/api/login', async (req, res) => {
         });
     }
 });
-
 // Password reset request endpoint
 app.post('/api/request-password-reset', async (req, res) => {
     const { email } = req.body;
@@ -385,14 +384,28 @@ app.post('/api/request-password-reset', async (req, res) => {
             [resetToken, resetTokenExpiry, user.user_id]
         );
 
-        const resetLink = `https://CivicConnect-516m.onrender.com/reset-password.html?token=${resetToken}`;
+        // CORRECTED: Using environment variable instead of hardcoded Render URL
+        const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetLink = `${frontendBaseUrl}/reset-password.html?token=${resetToken}`;
+        
         const transporter = await createTransporter();
 
         await transporter.sendMail({
             from: `CivicConnect <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Password Reset',
-            html: `<p>Click the link to reset your password: <a href="${resetLink}">Reset Password</a></p>`
+            // Added a bit of styling to the button to make it look professional
+            html: `
+                <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                    <h2>Password Reset Request</h2>
+                    <p>You requested a password reset for your CivicConnect account.</p>
+                    <p>Please click the button below to set a new password. This link is valid for 1 hour.</p>
+                    <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+                    <p>If you did not request this, please ignore this email.</p>
+                    <hr style="border: none; border-top: 1px solid #eee;" />
+                    <p style="font-size: 12px; color: #666;">If the button doesn't work, copy and paste this link into your browser:<br>${resetLink}</p>
+                </div>
+            `
         });
 
         res.status(200).json({ message: 'Password reset link sent to your email.' });
@@ -401,32 +414,6 @@ app.post('/api/request-password-reset', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
-// Password reset endpoint
-app.post('/api/reset-password', async (req, res) => {
-    const { token, newPassword } = req.body;
-
-    try {
-        const [users] = await db.execute('SELECT * FROM Users WHERE reset_token = ? AND reset_token_expiry > ?', [token, Date.now()]);
-        if (users.length === 0) {
-            return res.status(400).json({ error: 'Invalid or expired token' });
-        }
-
-        const user = users[0];
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        await db.execute(
-            'UPDATE Users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE user_id = ?',
-            [hashedPassword, user.user_id]
-        );
-
-        res.status(200).json({ message: 'Password reset successful. You can now log in with your new password.' });
-    } catch (err) {
-        console.error('Error resetting password:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
 // ===== APPLY FUNCTIONALITY ===== //
 
 // Enhanced GET /api/opportunities (now includes application status)
