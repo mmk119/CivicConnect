@@ -54,6 +54,7 @@ app.use(limiter);
 app.use(express.json());
 const allowedOrigins = [
     'http://localhost:3000',
+    'https://civicconnect-2.onrender.com',
     'http://127.0.0.1:5500',
     'https://CivicConnect-516m.onrender.com'
 ];
@@ -137,14 +138,6 @@ function authenticateToken(req, res, next) {
     });
 }
 
-function requireAdmin(req, res, next) {
-    if (!req.user || req.user.role !== 'Admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    next();
-}
-
 // ===== AUTH ROUTES =====
 
 app.post('/api/register', async (req, res) => {
@@ -208,7 +201,7 @@ app.post('/api/register', async (req, res) => {
         connection.release();
 
         try {
-            const verificationLink = `http://localhost:3000/api/verify-email?token=${verificationToken}`;
+            const verificationLink = `https://civicconnect-2.onrender.com/api/verify-email?token=${verificationToken}`;
             const transporter = await createTransporter();
             await transporter.sendMail({
                 from: `CivicConnect <${process.env.EMAIL_USER}>`,
@@ -266,10 +259,6 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
-        if (user.account_status === 'banned') {
-            return res.status(403).json({ error: 'Your account has been banned. Please contact support.' });
-        }
-
         let redirectPath;
         switch (user.role.toLowerCase()) {
             case 'ngo': redirectPath = 'dashboard.html'; break;
@@ -314,7 +303,7 @@ app.post('/api/request-password-reset', async (req, res) => {
             [resetToken, resetTokenExpiry, user.user_id]
         );
 
-        const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendBaseUrl = process.env.FRONTEND_URL || 'https://civicconnect-2.onrender.com';
         const resetLink = `${frontendBaseUrl}/reset-password.html?token=${resetToken}`;
         const transporter = await createTransporter();
 
@@ -380,7 +369,6 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
-
 // ===== OPPORTUNITIES =====
 
 // FIX 2: /api/opportunities/search MUST be before /api/opportunities/:id
@@ -444,21 +432,12 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
+app.post('/api/opportunities/ins', async (req, res) => {
     const { title, description, start_date, end_date, location, ngo_id } = req.body;
     if (!title || !description || !start_date || !end_date || !location) {
         return res.status(400).json({ error: "All fields are required." });
     }
     try {
-        const [ngos] = await db.execute(
-            'SELECT approval_status FROM NGOs WHERE user_id = ?',
-            [req.user.user_id]
-        );
-
-        if (ngos.length === 0 || ngos[0].approval_status !== 'approved') {
-            return res.status(403).json({ error: "Your NGO account is pending approval. You cannot post opportunities yet." });
-        }
-
         const query = `INSERT INTO Opportunities (title, description, start_date, end_date, location, ngo_id) VALUES (?, ?, ?, ?, ?, ?)`;
         const [result] = await db.execute(query, [title, description, start_date, end_date, location, ngo_id]);
         console.log("Opportunity saved:", result.insertId);
@@ -594,20 +573,15 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
 
     try {
         const [application] = await db.execute(`
-            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name, o.ngo_id
+            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name
             FROM Applications a
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
-            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
             WHERE a.application_id = ?
         `, [application_id]);
 
         if (application.length === 0) {
             return res.status(404).json({ error: 'Application not found' });
-        }
-
-        if (!req.user.ngo_id || Number(application[0].ngo_id) !== Number(req.user.ngo_id)) {
-            return res.status(403).json({ error: 'You are not allowed to update this application.' });
         }
 
         await db.execute(
@@ -704,19 +678,16 @@ app.delete('/api/files/:filename', (req, res) => {
 
 // ===== ADMIN =====
 
-// Admin endpoints
-app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/users', async (req, res) => {
     try {
-        const [users] = await db.execute(
-            'SELECT user_id, name, email, role, Verified, account_status, created_at FROM Users'
-        );
+        const [users] = await db.execute('SELECT * FROM Users');
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: "Failed to fetch users" });
     }
 });
 
-app.post('/api/admin/ngos/:ngo_id/approve', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/ngos/:ngo_id/approve', async (req, res) => {
     try {
         const { ngo_id } = req.params;
         await db.execute('UPDATE NGOs SET approval_status = "approved" WHERE ngo_id = ?', [ngo_id]);
@@ -726,7 +697,7 @@ app.post('/api/admin/ngos/:ngo_id/approve', authenticateToken, requireAdmin, asy
     }
 });
 
-app.post('/api/admin/ngos/:ngo_id/reject', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/ngos/:ngo_id/reject', async (req, res) => {
     try {
         const { ngo_id } = req.params;
         await db.execute('UPDATE NGOs SET approval_status = "rejected" WHERE ngo_id = ?', [ngo_id]);
@@ -736,7 +707,7 @@ app.post('/api/admin/ngos/:ngo_id/reject', authenticateToken, requireAdmin, asyn
     }
 });
 
-app.get('/api/admin/ngos/pending', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/ngos/pending', async (req, res) => {
     try {
         const [ngos] = await db.execute('SELECT ngo_id, name, description FROM NGOs WHERE approval_status = "pending"');
         res.json(ngos);
@@ -745,7 +716,7 @@ app.get('/api/admin/ngos/pending', authenticateToken, requireAdmin, async (req, 
     }
 });
 
-app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/admin/users/:id', async (req, res) => {
     try {
         await db.execute('DELETE FROM Users WHERE user_id = ?', [req.params.id]);
         res.json({ message: "User deleted" });
@@ -754,7 +725,7 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
     }
 });
 
-app.patch('/api/admin/users/:id/status', authenticateToken, requireAdmin, async (req, res) => {
+app.patch('/api/admin/users/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
