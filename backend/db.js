@@ -2,35 +2,38 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Create connection pool
-const pool = mysql.createPool({
+const useSsl = String(process.env.DB_SSL || '').toLowerCase() === 'true';
+const rejectUnauthorized = String(process.env.DB_SSL_REJECT_UNAUTHORIZED || 'true').toLowerCase() !== 'false';
+
+const poolConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 4000, // TiDB uses 4000
+    port: Number(process.env.DB_PORT) || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
-    // --- THIS IS THE FIX ---
-    ssl: {
-        minVersion: 'TLSv1.2',
-        rejectUnauthorized: true
-    }
-});
+    queueLimit: 0
+};
 
-// Test connection (optional)
+if (useSsl) {
+    poolConfig.ssl = {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized
+    };
+}
+
+const pool = mysql.createPool(poolConfig);
+
 async function testConnection() {
     try {
         const [rows] = await pool.query('SELECT 1 + 1 AS solution');
-        console.log('✅ Database connection test successful:', rows[0].solution === 2);
+        console.log('Database connection test successful:', rows[0].solution === 2);
     } catch (err) {
-        // Detailed error logging to help you debug on Render
-        console.error('❌ Database connection failed:', err.message);
+        console.error('Database connection failed:', err);
     }
 }
 
 testConnection();
 
-// Export the pool for use in other files
 module.exports = pool;

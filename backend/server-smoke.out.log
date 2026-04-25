@@ -1,0 +1,5 @@
+JWT Secret: dev_secret_key_123
+[2026-04-25T04:31:22.555Z] INFO: Server is starting...
+[2026-04-25T04:31:22.587Z] INFO: OAuth2 client initialized with refresh token from environment
+[2026-04-25T04:31:22.596Z] INFO: Server running at http://localhost:3001
+[2026-04-25T04:31:22.636Z] INFO: Database connection test successful: true

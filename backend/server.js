@@ -14,6 +14,7 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const crypto = require('crypto');
+const util = require('util');
 const winston = require("winston");
 const logger = winston.createLogger({
     level: "info",
@@ -30,8 +31,8 @@ const logger = winston.createLogger({
     ],
 });
 
-console.log = (msg) => logger.info(msg);
-console.error = (msg) => logger.error(msg);
+console.log = (...args) => logger.info(util.format(...args));
+console.error = (...args) => logger.error(util.format(...args));
 logger.info("Server is starting...");
 
 const app = express();
@@ -201,7 +202,8 @@ app.post('/api/register', async (req, res) => {
         connection.release();
 
         try {
-            const verificationLink = `https://civicconnect-2.onrender.com/api/verify-email?token=${verificationToken}`;
+            const backendBaseUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+            const verificationLink = `${backendBaseUrl}/api/verify-email?token=${verificationToken}`;
             const transporter = await createTransporter();
             await transporter.sendMail({
                 from: `CivicConnect <${process.env.EMAIL_USER}>`,
@@ -422,6 +424,10 @@ app.get('/api/opportunities/all', async (req, res) => {
 });
 
 app.get("/api/opportunities", authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ message: "Only NGO accounts can manage opportunities." });
+    }
+
     const ngoId = req.user.ngo_id;
     try {
         const [rows] = await db.execute(`SELECT * FROM Opportunities WHERE ngo_id = ?`, [ngoId]);
@@ -432,8 +438,14 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/opportunities/ins', async (req, res) => {
-    const { title, description, start_date, end_date, location, ngo_id } = req.body;
+app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: "Only NGO accounts can create opportunities." });
+    }
+
+    const { title, description, start_date, end_date, location } = req.body;
+    const ngo_id = req.user.ngo_id;
+
     if (!title || !description || !start_date || !end_date || !location) {
         return res.status(400).json({ error: "All fields are required." });
     }
@@ -450,9 +462,16 @@ app.post('/api/opportunities/ins', async (req, res) => {
 
 // FIX 4: DELETE ran the query twice and used wrong check — now uses affectedRows
 app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: "Only NGO accounts can delete opportunities." });
+    }
+
     const { id } = req.params;
     try {
-        const [result] = await db.execute("DELETE FROM Opportunities WHERE opportunity_id = ?", [id]);
+        const [result] = await db.execute(
+            "DELETE FROM Opportunities WHERE opportunity_id = ? AND ngo_id = ?",
+            [id, req.user.ngo_id]
+        );
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: "Opportunity not found." });
         }
@@ -494,10 +513,21 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 
     try {
         const [opportunity] = await db.execute(
-            'SELECT opportunity_id, title FROM Opportunities WHERE opportunity_id = ?', [opportunity_id]
+            'SELECT opportunity_id, title, end_date FROM Opportunities WHERE opportunity_id = ?', [opportunity_id]
         );
         if (opportunity.length === 0) {
             return res.status(404).json({ success: false, error: "Opportunity not found" });
+        }
+
+        if (opportunity[0].end_date) {
+            const endDate = new Date(opportunity[0].end_date);
+            endDate.setHours(23, 59, 59, 999);
+            if (endDate < new Date()) {
+                return res.status(400).json({
+                    success: false,
+                    error: "This opportunity has passed and can no longer accept applications."
+                });
+            }
         }
 
         const [volunteer] = await db.execute(
@@ -915,7 +945,12 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/landingpage.html'));
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
+const PORT = Number(process.env.PORT) || 3000;
+const server = app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+    console.error('Server failed to start:', err);
+    process.exit(1);
 });
