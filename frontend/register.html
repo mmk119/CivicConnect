@@ -260,11 +260,28 @@
         }
 
         const formData = {
-            name: document.getElementById('name').value,
-            email: document.getElementById('email').value,
+            name: document.getElementById('name').value.trim(),
+            email: document.getElementById('email').value.trim(),
             password,
             role
         };
+
+        if (role === 'Volunteer') {
+            formData.volunteer = {
+                dob: document.getElementById('dob').value,
+                city: document.getElementById('city').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                skills: document.getElementById('skills').value.trim()
+            };
+        }
+
+        if (role === 'NGO') {
+            formData.ngo = {
+                name: document.getElementById('ngoName').value.trim(),
+                description: document.getElementById('ngoDescription').value.trim(),
+                address: document.getElementById('ngoAddress').value.trim()
+            };
+        }
 
         try {
             const response = await fetch('/api/register', {

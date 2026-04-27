@@ -114,7 +114,32 @@
     </div>
 
     <script>
+        function getTokenPayload() {
+            const token = localStorage.getItem("token");
+            if (!token) return null;
+
+            try {
+                return JSON.parse(atob(token.split(".")[1]));
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function requireNgoAccess() {
+            const payload = getTokenPayload();
+
+            if (!payload || payload.role !== "NGO" || !payload.ngo_id) {
+                alert("Only NGO accounts can create volunteering opportunities.");
+                window.location.href = "opportunities.html";
+                return false;
+            }
+
+            return true;
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
+            if (!requireNgoAccess()) return;
+
             const storedData = localStorage.getItem("opportunityPreview");
 
             if (!storedData) {
@@ -133,10 +158,12 @@
         });
 
         function goBack() {
-            window.location.href = "dashboard.html";
+            window.location.href = "dashboard.html?fromPreview=1";
         }
 
         function submitOpportunity() {
+            if (!requireNgoAccess()) return;
+
             const storedData = localStorage.getItem("opportunityPreview");
 
             if (!storedData) {
@@ -146,7 +173,7 @@
 
             const opportunity = JSON.parse(storedData);
 
-            fetch('/api/opportunities', {
+            fetch('/api/opportunities/ins', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -154,9 +181,14 @@
                 },
                 body: JSON.stringify(opportunity)
             })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.message);
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    alert(data.error || "Failed to submit opportunity.");
+                    return;
+                }
+
+                alert(data.message || "Opportunity submitted successfully!");
                 localStorage.removeItem("opportunityPreview");
                 window.location.href = "dashboard.html";
             })
