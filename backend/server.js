@@ -139,6 +139,31 @@ function authenticateToken(req, res, next) {
     });
 }
 
+function requireAdmin(req, res, next) {
+    if (req.user.role !== 'Admin') {
+        return res.status(403).json({ error: 'Admin privileges required.' });
+    }
+    next();
+}
+
+async function writeAuditLog(adminId, action, targetType, targetId, details = '') {
+    try {
+        await db.execute(
+            `INSERT INTO AuditLogs (admin_id, action, target_type, target_id, details)
+             VALUES (?, ?, ?, ?, ?)`,
+            [adminId || null, action, targetType, targetId || null, details]
+        );
+    } catch (err) {
+        console.error('Audit log failed:', err.message);
+    }
+}
+
+function csvEscape(value) {
+    if (value === null || value === undefined) return '';
+    const text = String(value).replace(/"/g, '""');
+    return /[",\n\r]/.test(text) ? `"${text}"` : text;
+}
+
 // ===== AUTH ROUTES =====
 
 app.post('/api/register', async (req, res) => {
@@ -255,6 +280,9 @@ app.post('/api/login', async (req, res) => {
         const user = users[0];
         if (user.Verified !== 'YES') {
             return res.status(403).json({ error: 'Please verify your email before logging in.' });
+        }
+        if (user.account_status === 'banned') {
+            return res.status(403).json({ error: 'Your account has been banned. Please contact the administrator.' });
         }
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
@@ -373,17 +401,31 @@ app.post('/api/reset-password', async (req, res) => {
 
 // ===== OPPORTUNITIES =====
 
+const opportunityFields = [
+    'Education',
+    'Health',
+    'Environment',
+    'Community',
+    'Elderly Care',
+    'Children & Youth',
+    'Disability Support',
+    'Food Distribution',
+    'Other'
+];
+
 // FIX 2: /api/opportunities/search MUST be before /api/opportunities/:id
 app.get('/api/opportunities/search', async (req, res) => {
-    const { location, keyword } = req.query;
+    const { location = '', keyword = '', field = '' } = req.query;
     try {
         const query = `
-            SELECT opportunity_id, title, description, start_date, end_date, location, ngo_id
+            SELECT opportunity_id, title, field, description, start_date, end_date, location, ngo_id
             FROM Opportunities
-            WHERE location LIKE ? AND (title LIKE ? OR description LIKE ?)
+            WHERE location LIKE ?
+              AND (title LIKE ? OR description LIKE ?)
+              AND (? = '' OR field = ?)
             ORDER BY start_date ASC
         `;
-        const [results] = await db.execute(query, [`%${location}%`, `%${keyword}%`, `%${keyword}%`]);
+        const [results] = await db.execute(query, [`%${location}%`, `%${keyword}%`, `%${keyword}%`, field, field]);
         res.json(results);
     } catch (err) {
         console.error("Error fetching opportunities:", err);
@@ -409,12 +451,22 @@ app.get('/api/opportunities/all', async (req, res) => {
         const [opportunities] = await db.execute(`
             SELECT 
                 o.*,
+                n.name AS ngo_name,
+                n.logo AS ngo_logo,
+                (
+                    SELECT COUNT(*)
+                    FROM Applications a
+                    WHERE a.opportunity_id = o.opportunity_id
+                      AND a.status = 'accepted'
+                ) AS accepted_count,
                 ${volunteer_id
-                    ? `EXISTS(SELECT 1 FROM applications WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id) AS has_applied`
-                    : '0 AS has_applied'}
-            FROM opportunities o
+                    ? `EXISTS(SELECT 1 FROM Applications WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id) AS has_applied,
+                       EXISTS(SELECT 1 FROM SavedOpportunities WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id) AS is_saved`
+                    : '0 AS has_applied, 0 AS is_saved'}
+            FROM Opportunities o
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
             ORDER BY o.start_date ASC
-        `, volunteer_id ? [volunteer_id] : []);
+        `, volunteer_id ? [volunteer_id, volunteer_id] : []);
 
         res.json(opportunities);
     } catch (err) {
@@ -430,7 +482,17 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
 
     const ngoId = req.user.ngo_id;
     try {
-        const [rows] = await db.execute(`SELECT * FROM Opportunities WHERE ngo_id = ?`, [ngoId]);
+        const [rows] = await db.execute(`
+            SELECT o.*,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id
+                         AND a.status = 'accepted'
+                   ) AS accepted_count
+            FROM Opportunities o
+            WHERE o.ngo_id = ?
+        `, [ngoId]);
         res.json(rows);
     } catch (err) {
         console.error("Database error:", err);
@@ -443,15 +505,45 @@ app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
         return res.status(403).json({ error: "Only NGO accounts can create opportunities." });
     }
 
-    const { title, description, start_date, end_date, location } = req.body;
+    const { title, field, description, start_date, end_date, hours_required, capacity, location } = req.body;
     const ngo_id = req.user.ngo_id;
+    const hoursRequired = Number(hours_required);
+    const volunteerCapacity = Number(capacity);
 
-    if (!title || !description || !start_date || !end_date || !location) {
+    if (!title || !field || !description || !start_date || !end_date || !hours_required || !capacity || !location) {
         return res.status(400).json({ error: "All fields are required." });
     }
+
+    if (!opportunityFields.includes(field)) {
+        return res.status(400).json({ error: "Invalid opportunity field." });
+    }
+
+    if (!Number.isInteger(hoursRequired) || hoursRequired < 1) {
+        return res.status(400).json({ error: "Hours required must be a positive whole number." });
+    }
+
+    if (!Number.isInteger(volunteerCapacity) || volunteerCapacity < 1) {
+        return res.status(400).json({ error: "Volunteer capacity must be a positive whole number." });
+    }
+
     try {
-        const query = `INSERT INTO Opportunities (title, description, start_date, end_date, location, ngo_id) VALUES (?, ?, ?, ?, ?, ?)`;
-        const [result] = await db.execute(query, [title, description, start_date, end_date, location, ngo_id]);
+        const [ngoRows] = await db.execute(
+            'SELECT approval_status FROM NGOs WHERE ngo_id = ?',
+            [ngo_id]
+        );
+
+        if (ngoRows.length === 0) {
+            return res.status(404).json({ error: "NGO profile not found." });
+        }
+
+        if (ngoRows[0].approval_status !== 'approved') {
+            return res.status(403).json({
+                error: "Your NGO account must be approved by an admin before posting opportunities."
+            });
+        }
+
+        const query = `INSERT INTO Opportunities (title, field, description, start_date, end_date, hours_required, capacity, location, ngo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const [result] = await db.execute(query, [title, field, description, start_date, end_date, hoursRequired, volunteerCapacity, location, ngo_id]);
         console.log("Opportunity saved:", result.insertId);
         res.status(201).json({ message: "Opportunity submitted successfully!", id: result.insertId });
     } catch (err) {
@@ -487,7 +579,16 @@ app.get('/api/opportunities/:id', async (req, res) => {
     const { id } = req.params;
     try {
         const [results] = await db.execute(
-            `SELECT o.*, n.name AS ngo_name FROM Opportunities o JOIN NGOs n ON o.ngo_id = n.ngo_id WHERE o.opportunity_id = ?`,
+            `SELECT o.*, n.name AS ngo_name, n.logo AS ngo_logo,
+                    (
+                        SELECT COUNT(*)
+                        FROM Applications a
+                        WHERE a.opportunity_id = o.opportunity_id
+                          AND a.status = 'accepted'
+                    ) AS accepted_count
+             FROM Opportunities o
+             JOIN NGOs n ON o.ngo_id = n.ngo_id
+             WHERE o.opportunity_id = ?`,
             [id]
         );
         if (results.length === 0) {
@@ -502,6 +603,48 @@ app.get('/api/opportunities/:id', async (req, res) => {
 
 // ===== APPLICATIONS =====
 
+app.get('/api/ngo-public/:ngo_id', async (req, res) => {
+    const { ngo_id } = req.params;
+
+    try {
+        const [ngos] = await db.execute(`
+            SELECT
+                n.ngo_id,
+                n.name,
+                n.description,
+                n.address,
+                n.logo,
+                n.created_at,
+                u.email,
+                COUNT(DISTINCT o.opportunity_id) AS opportunities_posted,
+                COUNT(DISTINCT CASE WHEN a.attendance_confirmed = 'YES' THEN a.volunteer_id END) AS total_volunteers_helped,
+                COALESCE(SUM(CASE WHEN a.attendance_confirmed = 'YES' THEN a.hours_completed ELSE 0 END), 0) AS total_hours_hosted
+            FROM NGOs n
+            JOIN Users u ON n.user_id = u.user_id
+            LEFT JOIN Opportunities o ON n.ngo_id = o.ngo_id
+            LEFT JOIN Applications a ON o.opportunity_id = a.opportunity_id
+            WHERE n.ngo_id = ? AND n.approval_status = 'approved'
+            GROUP BY n.ngo_id, n.name, n.description, n.address, n.logo, n.created_at, u.email
+        `, [ngo_id]);
+
+        if (ngos.length === 0) {
+            return res.status(404).json({ error: 'NGO profile not found.' });
+        }
+
+        const [opportunities] = await db.execute(`
+            SELECT opportunity_id, title, field, description, location, start_date, end_date, hours_required, capacity
+            FROM Opportunities
+            WHERE ngo_id = ?
+            ORDER BY start_date DESC
+        `, [ngo_id]);
+
+        res.json({ ...ngos[0], opportunities });
+    } catch (err) {
+        console.error('Error fetching public NGO profile:', err);
+        res.status(500).json({ error: 'Failed to fetch NGO profile.' });
+    }
+});
+
 app.post('/api/applications', authenticateToken, async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     const { opportunity_id } = req.body;
@@ -513,10 +656,23 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 
     try {
         const [opportunity] = await db.execute(
-            'SELECT opportunity_id, title, end_date FROM Opportunities WHERE opportunity_id = ?', [opportunity_id]
+            `SELECT opportunity_id, title, end_date, capacity,
+                    (
+                        SELECT COUNT(*)
+                        FROM Applications
+                        WHERE opportunity_id = ?
+                          AND status = 'accepted'
+                    ) AS accepted_count
+             FROM Opportunities
+             WHERE opportunity_id = ?`,
+            [opportunity_id, opportunity_id]
         );
         if (opportunity.length === 0) {
             return res.status(404).json({ success: false, error: "Opportunity not found" });
+        }
+
+        if (Number(opportunity[0].capacity) > 0 && Number(opportunity[0].accepted_count) >= Number(opportunity[0].capacity)) {
+            return res.status(400).json({ success: false, error: "This opportunity is full and no longer accepts applications." });
         }
 
         if (opportunity[0].end_date) {
@@ -591,8 +747,71 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/saved-opportunities', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).json({ error: 'Only volunteers can save opportunities.' });
+    }
+
+    const { opportunity_id } = req.body;
+    if (!opportunity_id || isNaN(opportunity_id)) {
+        return res.status(400).json({ error: 'Valid opportunity ID is required.' });
+    }
+
+    try {
+        const [volunteers] = await db.execute(
+            'SELECT volunteer_id FROM Volunteers WHERE user_id = ?',
+            [req.user.user_id]
+        );
+
+        if (volunteers.length === 0) {
+            return res.status(403).json({ error: 'Volunteer profile not found.' });
+        }
+
+        await db.execute(
+            `INSERT IGNORE INTO SavedOpportunities (volunteer_id, opportunity_id) VALUES (?, ?)`,
+            [volunteers[0].volunteer_id, opportunity_id]
+        );
+
+        res.status(201).json({ message: 'Opportunity saved.' });
+    } catch (err) {
+        console.error('Error saving opportunity:', err);
+        res.status(500).json({ error: 'Failed to save opportunity.' });
+    }
+});
+
+app.delete('/api/saved-opportunities/:opportunity_id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).json({ error: 'Only volunteers can remove saved opportunities.' });
+    }
+
+    try {
+        const [volunteers] = await db.execute(
+            'SELECT volunteer_id FROM Volunteers WHERE user_id = ?',
+            [req.user.user_id]
+        );
+
+        if (volunteers.length === 0) {
+            return res.status(403).json({ error: 'Volunteer profile not found.' });
+        }
+
+        await db.execute(
+            `DELETE FROM SavedOpportunities WHERE volunteer_id = ? AND opportunity_id = ?`,
+            [volunteers[0].volunteer_id, req.params.opportunity_id]
+        );
+
+        res.json({ message: 'Saved opportunity removed.' });
+    } catch (err) {
+        console.error('Error removing saved opportunity:', err);
+        res.status(500).json({ error: 'Failed to remove saved opportunity.' });
+    }
+});
+
 // FIX 5: Application status values match DB enum (lowercase)
 app.patch('/api/applications/:application_id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: 'Only NGO accounts can update application status.' });
+    }
+
     const { application_id } = req.params;
     const { status } = req.body;
     const validStatuses = ['pending', 'accepted', 'rejected'];
@@ -603,15 +822,33 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
 
     try {
         const [application] = await db.execute(`
-            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name
+            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name, o.capacity
             FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
-            WHERE a.application_id = ?
-        `, [application_id]);
+            WHERE a.application_id = ? AND o.ngo_id = ?
+        `, [application_id, req.user.ngo_id]);
 
         if (application.length === 0) {
             return res.status(404).json({ error: 'Application not found' });
+        }
+
+        if (status === 'accepted') {
+            const [capacityRows] = await db.execute(`
+                SELECT COUNT(*) AS accepted_count
+                FROM Applications
+                WHERE opportunity_id = ?
+                  AND status = 'accepted'
+                  AND application_id <> ?
+            `, [application[0].opportunity_id, application_id]);
+
+            if (
+                Number(application[0].capacity) > 0 &&
+                Number(capacityRows[0].accepted_count) >= Number(application[0].capacity)
+            ) {
+                return res.status(400).json({ error: 'This opportunity has reached its volunteer capacity.' });
+            }
         }
 
         await db.execute(
@@ -634,17 +871,130 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
     }
 });
 
-app.get('/api/applicants', authenticateToken, async (req, res) => {
-    const ngo_id = req.query.ngo_id;
-    if (!ngo_id) {
-        return res.status(400).json({ error: 'ngo_id query parameter is required' });
+app.patch('/api/applications/:application_id/attendance', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: 'Only NGO accounts can confirm volunteer attendance.' });
     }
+
+    const { application_id } = req.params;
+    const requestedHours = Number(req.body.hours_completed);
+
+    if (!Number.isInteger(requestedHours) || requestedHours < 1) {
+        return res.status(400).json({ error: 'Completed hours must be a positive whole number.' });
+    }
+
+    try {
+        const [applications] = await db.execute(`
+            SELECT
+                a.application_id,
+                a.status,
+                a.attendance_confirmed,
+                o.end_date,
+                o.hours_required
+            FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            WHERE a.application_id = ? AND o.ngo_id = ?
+        `, [application_id, req.user.ngo_id]);
+
+        if (applications.length === 0) {
+            return res.status(404).json({ error: 'Application not found for this NGO.' });
+        }
+
+        const application = applications[0];
+
+        if (application.status !== 'accepted') {
+            return res.status(400).json({ error: 'Only accepted applications can receive volunteering hours.' });
+        }
+
+        if (application.attendance_confirmed === 'YES') {
+            return res.status(409).json({ error: 'Attendance has already been confirmed for this application.' });
+        }
+
+        const endDate = new Date(application.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (endDate >= new Date()) {
+            return res.status(400).json({ error: 'Attendance can only be confirmed after the opportunity has ended.' });
+        }
+
+        const maxHours = Number(application.hours_required) || requestedHours;
+        if (requestedHours > maxHours) {
+            return res.status(400).json({ error: `Completed hours cannot be more than ${maxHours}.` });
+        }
+
+        await db.execute(`
+            UPDATE Applications
+            SET attendance_confirmed = 'YES',
+                hours_completed = ?,
+                attendance_confirmed_at = NOW()
+            WHERE application_id = ?
+        `, [requestedHours, application_id]);
+
+        res.json({ message: `Attendance confirmed. ${requestedHours} volunteering hours added.` });
+    } catch (err) {
+        console.error('Error confirming attendance:', err);
+        res.status(500).json({ error: 'Failed to confirm attendance.' });
+    }
+});
+
+app.get('/api/volunteer/applications', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).json({ error: 'Only volunteers can view application history.' });
+    }
+
+    try {
+        const [volunteers] = await db.execute(
+            'SELECT volunteer_id FROM Volunteers WHERE user_id = ?',
+            [req.user.user_id]
+        );
+
+        if (volunteers.length === 0) {
+            return res.json([]);
+        }
+
+        const [applications] = await db.execute(`
+            SELECT
+                a.application_id,
+                a.status,
+                a.applied_at,
+                o.opportunity_id,
+                o.title,
+                o.description,
+                o.field,
+                o.location,
+                o.start_date,
+                o.end_date,
+                o.hours_required,
+                a.hours_completed,
+                a.attendance_confirmed,
+                a.attendance_confirmed_at,
+                n.name AS ngo_name
+            FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
+            WHERE a.volunteer_id = ?
+            ORDER BY a.applied_at DESC
+        `, [volunteers[0].volunteer_id]);
+
+        res.json(applications);
+    } catch (err) {
+        console.error('Error fetching volunteer application history:', err);
+        res.status(500).json({ error: 'Failed to fetch application history.' });
+    }
+});
+
+app.get('/api/applicants', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: 'Only NGO accounts can view applicants.' });
+    }
+
+    const ngo_id = req.user.ngo_id;
+
     try {
         const [opps] = await db.execute(
             `SELECT opportunity_id FROM Opportunities WHERE ngo_id = ?`, [ngo_id]
         );
         if (opps.length === 0) {
-            return res.status(404).json({ error: 'No opportunities found for this NGO.' });
+            return res.json([]);
         }
         const ids = opps.map(o => o.opportunity_id);
         const placeholders = ids.map(_ => '?').join(',');
@@ -658,7 +1008,25 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
                 v.city,
                 v.skills,
                 a.status,
-                o.title AS opportunity_name
+                a.hours_completed,
+                a.attendance_confirmed,
+                a.attendance_confirmed_at,
+                o.title AS opportunity_name,
+                o.end_date,
+                o.hours_required,
+                COALESCE((
+                    SELECT SUM(a2.hours_completed)
+                    FROM Applications a2
+                    WHERE a2.volunteer_id = v.volunteer_id
+                      AND a2.attendance_confirmed = 'YES'
+                ), 0) AS total_hours,
+                (
+                    SELECT GROUP_CONCAT(CONCAT(o2.title, ' (', a2.hours_completed, ' hrs)') ORDER BY o2.end_date DESC SEPARATOR '||')
+                    FROM Applications a2
+                    JOIN Opportunities o2 ON a2.opportunity_id = o2.opportunity_id
+                    WHERE a2.volunteer_id = v.volunteer_id
+                      AND a2.attendance_confirmed = 'YES'
+                ) AS completed_history
             FROM Applications a
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
@@ -708,64 +1076,419 @@ app.delete('/api/files/:filename', (req, res) => {
 
 // ===== ADMIN =====
 
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/overview', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const [users] = await db.execute('SELECT * FROM Users');
+        const [[userCounts]] = await db.execute(`
+            SELECT
+                COUNT(*) AS total_users,
+                SUM(role = 'Volunteer') AS volunteers,
+                SUM(role = 'NGO') AS ngos,
+                SUM(role = 'Admin') AS admins,
+                SUM(account_status = 'banned') AS banned_users
+            FROM Users
+        `);
+        const [[ngoCounts]] = await db.execute(`
+            SELECT
+                SUM(approval_status = 'pending') AS pending_ngos,
+                SUM(approval_status = 'approved') AS approved_ngos,
+                SUM(approval_status = 'rejected') AS rejected_ngos
+            FROM NGOs
+        `);
+        const [[opportunityCounts]] = await db.execute(`
+            SELECT
+                COUNT(*) AS total_opportunities,
+                SUM(end_date >= CURDATE()) AS upcoming_opportunities,
+                SUM(end_date < CURDATE()) AS passed_opportunities
+            FROM Opportunities
+        `);
+        const [[applicationCounts]] = await db.execute(`
+            SELECT
+                COUNT(*) AS total_applications,
+                SUM(status = 'pending') AS pending_applications,
+                SUM(status = 'accepted') AS accepted_applications,
+                SUM(status = 'rejected') AS rejected_applications,
+                COALESCE(SUM(CASE WHEN attendance_confirmed = 'YES' THEN hours_completed ELSE 0 END), 0) AS confirmed_hours
+            FROM Applications
+        `);
+        const [popularFields] = await db.execute(`
+            SELECT field, COUNT(*) AS total
+            FROM Opportunities
+            GROUP BY field
+            ORDER BY total DESC, field ASC
+        `);
+        const [monthlyApplications] = await db.execute(`
+            SELECT DATE_FORMAT(applied_at, '%Y-%m') AS month, COUNT(*) AS total
+            FROM Applications
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT 6
+        `);
+        const [topVolunteers] = await db.execute(`
+            SELECT u.name, u.email, COALESCE(SUM(a.hours_completed), 0) AS total_hours
+            FROM Applications a
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            WHERE a.attendance_confirmed = 'YES'
+            GROUP BY u.user_id, u.name, u.email
+            ORDER BY total_hours DESC
+            LIMIT 5
+        `);
+        const [topNgos] = await db.execute(`
+            SELECT n.name, COUNT(o.opportunity_id) AS total_opportunities
+            FROM NGOs n
+            LEFT JOIN Opportunities o ON n.ngo_id = o.ngo_id
+            GROUP BY n.ngo_id, n.name
+            ORDER BY total_opportunities DESC
+            LIMIT 5
+        `);
+
+        res.json({
+            stats: {
+                ...userCounts,
+                ...ngoCounts,
+                ...opportunityCounts,
+                ...applicationCounts
+            },
+            popularFields,
+            monthlyApplications,
+            topVolunteers,
+            topNgos
+        });
+    } catch (err) {
+        console.error('Admin overview error:', err);
+        res.status(500).json({ error: 'Failed to load admin overview.' });
+    }
+});
+
+app.get('/api/admin/notifications', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [[pendingNgos]] = await db.execute(`SELECT COUNT(*) AS count FROM NGOs WHERE approval_status = 'pending'`);
+        const [[pendingApplications]] = await db.execute(`SELECT COUNT(*) AS count FROM Applications WHERE status = 'pending'`);
+        const [[unconfirmedHours]] = await db.execute(`
+            SELECT COUNT(*) AS count
+            FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            WHERE a.status = 'accepted'
+              AND a.attendance_confirmed = 'NO'
+              AND o.end_date < CURDATE()
+        `);
+        const [[newOpportunities]] = await db.execute(`
+            SELECT COUNT(*) AS count
+            FROM Opportunities
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        `);
+
+        res.json([
+            { type: 'NGO approval', count: pendingNgos.count, message: `${pendingNgos.count} NGOs waiting for approval` },
+            { type: 'Applications', count: pendingApplications.count, message: `${pendingApplications.count} pending volunteer applications` },
+            { type: 'Hours', count: unconfirmedHours.count, message: `${unconfirmedHours.count} accepted applications need hour confirmation` },
+            { type: 'Opportunities', count: newOpportunities.count, message: `${newOpportunities.count} opportunities posted this week` }
+        ]);
+    } catch (err) {
+        console.error('Admin notifications error:', err);
+        res.status(500).json({ error: 'Failed to load notifications.' });
+    }
+});
+
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+    const { search = '', role = '', status = '' } = req.query;
+    try {
+        const [users] = await db.execute(`
+            SELECT user_id, name, email, role, Verified, account_status, ngo_id, created_at
+            FROM Users
+            WHERE (? = '' OR name LIKE ? OR email LIKE ?)
+              AND (? = '' OR role = ?)
+              AND (? = '' OR account_status = ?)
+            ORDER BY created_at DESC
+        `, [search, `%${search}%`, `%${search}%`, role, role, status, status]);
         res.json(users);
     } catch (err) {
+        console.error('Admin users error:', err);
         res.status(500).json({ error: "Failed to fetch users" });
     }
 });
 
-app.post('/api/admin/ngos/:ngo_id/approve', async (req, res) => {
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { ngo_id } = req.params;
-        await db.execute('UPDATE NGOs SET approval_status = "approved" WHERE ngo_id = ?', [ngo_id]);
-        res.json({ message: "NGO approved successfully" });
-    } catch (err) {
-        res.status(500).json({ error: "Approval failed" });
-    }
-});
+        if (Number(req.params.id) === Number(req.user.user_id)) {
+            return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+        }
 
-app.post('/api/admin/ngos/:ngo_id/reject', async (req, res) => {
-    try {
-        const { ngo_id } = req.params;
-        await db.execute('UPDATE NGOs SET approval_status = "rejected" WHERE ngo_id = ?', [ngo_id]);
-        res.json({ message: "NGO rejected successfully" });
-    } catch (err) {
-        res.status(500).json({ error: "Rejection failed" });
-    }
-});
+        const [result] = await db.execute('DELETE FROM Users WHERE user_id = ?', [req.params.id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
 
-app.get('/api/admin/ngos/pending', async (req, res) => {
-    try {
-        const [ngos] = await db.execute('SELECT ngo_id, name, description FROM NGOs WHERE approval_status = "pending"');
-        res.json(ngos);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch NGOs" });
-    }
-});
-
-app.delete('/api/admin/users/:id', async (req, res) => {
-    try {
-        await db.execute('DELETE FROM Users WHERE user_id = ?', [req.params.id]);
+        await writeAuditLog(req.user.user_id, 'delete_user', 'User', req.params.id, 'Admin deleted a user account.');
         res.json({ message: "User deleted" });
     } catch (err) {
+        console.error('Admin delete user error:', err);
         res.status(500).json({ error: "Deletion failed" });
     }
 });
 
-app.patch('/api/admin/users/:id/status', async (req, res) => {
+app.patch('/api/admin/users/:id/status', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
         if (!['active', 'banned'].includes(status)) {
             return res.status(400).json({ error: "Invalid status" });
         }
-        await db.execute('UPDATE Users SET account_status = ? WHERE user_id = ?', [status, id]);
+
+        if (Number(id) === Number(req.user.user_id) && status === 'banned') {
+            return res.status(400).json({ error: 'You cannot ban your own admin account.' });
+        }
+
+        const [result] = await db.execute('UPDATE Users SET account_status = ? WHERE user_id = ?', [status, id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        await writeAuditLog(req.user.user_id, `set_user_${status}`, 'User', id, `Admin changed account status to ${status}.`);
         res.json({ message: 'Account status updated' });
     } catch (err) {
+        console.error('Admin user status error:', err);
         res.status(500).json({ error: "Status update failed" });
+    }
+});
+
+app.get('/api/admin/ngos', authenticateToken, requireAdmin, async (req, res) => {
+    const { status = '', search = '' } = req.query;
+    try {
+        let query = `
+            SELECT n.ngo_id, n.name, n.description, n.address, n.logo, n.approval_status,
+                   n.rejection_reason, n.created_at, u.email, u.account_status
+            FROM NGOs n
+            JOIN Users u ON n.user_id = u.user_id
+            WHERE (? = '' OR n.approval_status = ?)
+              AND (? = '' OR n.name LIKE ? OR u.email LIKE ? OR n.address LIKE ?)
+            ORDER BY FIELD(n.approval_status, 'pending', 'approved', 'rejected'), n.created_at DESC
+        `;
+
+        let ngos;
+        try {
+            [ngos] = await db.execute(query, [status, status, search, `%${search}%`, `%${search}%`, `%${search}%`]);
+        } catch (err) {
+            if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+
+            query = `
+                SELECT n.ngo_id, n.name, n.description, n.address, n.logo, n.approval_status,
+                       NULL AS rejection_reason, n.created_at, u.email, u.account_status
+                FROM NGOs n
+                JOIN Users u ON n.user_id = u.user_id
+                WHERE (? = '' OR n.approval_status = ?)
+                  AND (? = '' OR n.name LIKE ? OR u.email LIKE ? OR n.address LIKE ?)
+                ORDER BY FIELD(n.approval_status, 'pending', 'approved', 'rejected'), n.created_at DESC
+            `;
+            [ngos] = await db.execute(query, [status, status, search, `%${search}%`, `%${search}%`, `%${search}%`]);
+        }
+
+        res.json(ngos);
+    } catch (err) {
+        console.error('Admin NGOs error:', err);
+        res.status(500).json({ error: "Failed to fetch NGOs" });
+    }
+});
+
+app.get('/api/admin/ngos/pending', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [ngos] = await db.execute(`
+            SELECT n.ngo_id, n.name, n.description, n.address, u.email
+            FROM NGOs n
+            JOIN Users u ON n.user_id = u.user_id
+            WHERE n.approval_status = 'pending'
+            ORDER BY n.created_at ASC
+        `);
+        res.json(ngos);
+    } catch (err) {
+        console.error('Admin pending NGOs error:', err);
+        res.status(500).json({ error: "Failed to fetch NGOs" });
+    }
+});
+
+app.post('/api/admin/ngos/:ngo_id/approve', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { ngo_id } = req.params;
+        let result;
+        try {
+            [result] = await db.execute(
+                `UPDATE NGOs SET approval_status = 'approved', rejection_reason = NULL WHERE ngo_id = ?`,
+                [ngo_id]
+            );
+        } catch (err) {
+            if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+            [result] = await db.execute(
+                `UPDATE NGOs SET approval_status = 'approved' WHERE ngo_id = ?`,
+                [ngo_id]
+            );
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'NGO not found.' });
+        }
+
+        await writeAuditLog(req.user.user_id, 'approve_ngo', 'NGO', ngo_id, 'Admin approved NGO account.');
+        res.json({ message: "NGO approved successfully" });
+    } catch (err) {
+        console.error('Admin approve NGO error:', err);
+        res.status(500).json({ error: "Approval failed" });
+    }
+});
+
+app.post('/api/admin/ngos/:ngo_id/reject', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { ngo_id } = req.params;
+        const reason = String(req.body.reason || '').trim();
+        let result;
+        try {
+            [result] = await db.execute(
+                `UPDATE NGOs SET approval_status = 'rejected', rejection_reason = ? WHERE ngo_id = ?`,
+                [reason || null, ngo_id]
+            );
+        } catch (err) {
+            if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+            [result] = await db.execute(
+                `UPDATE NGOs SET approval_status = 'rejected' WHERE ngo_id = ?`,
+                [ngo_id]
+            );
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'NGO not found.' });
+        }
+
+        await writeAuditLog(req.user.user_id, 'reject_ngo', 'NGO', ngo_id, reason || 'Admin rejected NGO account.');
+        res.json({ message: "NGO rejected successfully" });
+    } catch (err) {
+        console.error('Admin reject NGO error:', err);
+        res.status(500).json({ error: "Rejection failed" });
+    }
+});
+
+app.get('/api/admin/opportunities', authenticateToken, requireAdmin, async (req, res) => {
+    const { search = '', field = '', status = '' } = req.query;
+    try {
+        const [opportunities] = await db.execute(`
+            SELECT o.*, n.name AS ngo_name,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id
+                   ) AS application_count
+            FROM Opportunities o
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
+            WHERE (? = '' OR o.title LIKE ? OR o.description LIKE ? OR o.location LIKE ? OR n.name LIKE ?)
+              AND (? = '' OR o.field = ?)
+              AND (? = '' OR (? = 'upcoming' AND o.end_date >= CURDATE()) OR (? = 'passed' AND o.end_date < CURDATE()))
+            ORDER BY o.created_at DESC
+        `, [search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, field, field, status, status, status]);
+        res.json(opportunities);
+    } catch (err) {
+        console.error('Admin opportunities error:', err);
+        res.status(500).json({ error: 'Failed to fetch opportunities.' });
+    }
+});
+
+app.delete('/api/admin/opportunities/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [result] = await db.execute('DELETE FROM Opportunities WHERE opportunity_id = ?', [req.params.id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Opportunity not found.' });
+        }
+
+        await writeAuditLog(req.user.user_id, 'delete_opportunity', 'Opportunity', req.params.id, 'Admin deleted an opportunity.');
+        res.json({ message: 'Opportunity deleted successfully.' });
+    } catch (err) {
+        console.error('Admin delete opportunity error:', err);
+        res.status(500).json({ error: 'Failed to delete opportunity.' });
+    }
+});
+
+app.get('/api/admin/applications', authenticateToken, requireAdmin, async (req, res) => {
+    const { status = '', search = '' } = req.query;
+    try {
+        const [applications] = await db.execute(`
+            SELECT a.application_id, a.status, a.applied_at, a.attendance_confirmed,
+                   a.hours_completed, a.attendance_confirmed_at,
+                   o.title AS opportunity_title, o.field, o.hours_required,
+                   n.name AS ngo_name,
+                   u.name AS volunteer_name, u.email AS volunteer_email
+            FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            WHERE (? = '' OR a.status = ?)
+              AND (? = '' OR o.title LIKE ? OR n.name LIKE ? OR u.name LIKE ? OR u.email LIKE ?)
+            ORDER BY a.applied_at DESC
+        `, [status, status, search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`]);
+        res.json(applications);
+    } catch (err) {
+        console.error('Admin applications error:', err);
+        res.status(500).json({ error: 'Failed to fetch applications.' });
+    }
+});
+
+app.get('/api/admin/audit-logs', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const [logs] = await db.execute(`
+            SELECT l.*, u.name AS admin_name, u.email AS admin_email
+            FROM AuditLogs l
+            LEFT JOIN Users u ON l.admin_id = u.user_id
+            ORDER BY l.created_at DESC
+            LIMIT 100
+        `);
+        res.json(logs);
+    } catch (err) {
+        console.error('Admin audit logs error:', err);
+        res.status(500).json({ error: 'Failed to fetch audit logs.' });
+    }
+});
+
+app.get('/api/admin/export/:type', authenticateToken, requireAdmin, async (req, res) => {
+    const { type } = req.params;
+    const exports = {
+        users: {
+            filename: 'users.csv',
+            query: `SELECT user_id, name, email, role, Verified, account_status, created_at FROM Users ORDER BY created_at DESC`
+        },
+        ngos: {
+            filename: 'ngos.csv',
+            query: `SELECT n.ngo_id, n.name, u.email, n.address, n.approval_status, n.rejection_reason, n.created_at FROM NGOs n JOIN Users u ON n.user_id = u.user_id ORDER BY n.created_at DESC`
+        },
+        opportunities: {
+            filename: 'opportunities.csv',
+            query: `SELECT o.opportunity_id, o.title, o.field, o.location, o.start_date, o.end_date, o.hours_required, n.name AS ngo_name, o.created_at FROM Opportunities o JOIN NGOs n ON o.ngo_id = n.ngo_id ORDER BY o.created_at DESC`
+        },
+        applications: {
+            filename: 'applications.csv',
+            query: `SELECT a.application_id, u.name AS volunteer_name, u.email AS volunteer_email, o.title AS opportunity_title, n.name AS ngo_name, a.status, a.applied_at, a.attendance_confirmed, a.hours_completed FROM Applications a JOIN Volunteers v ON a.volunteer_id = v.volunteer_id JOIN Users u ON v.user_id = u.user_id JOIN Opportunities o ON a.opportunity_id = o.opportunity_id JOIN NGOs n ON o.ngo_id = n.ngo_id ORDER BY a.applied_at DESC`
+        },
+        hours: {
+            filename: 'volunteer_hours.csv',
+            query: `SELECT u.name AS volunteer_name, u.email, COALESCE(SUM(a.hours_completed), 0) AS confirmed_hours FROM Volunteers v JOIN Users u ON v.user_id = u.user_id LEFT JOIN Applications a ON v.volunteer_id = a.volunteer_id AND a.attendance_confirmed = 'YES' GROUP BY u.user_id, u.name, u.email ORDER BY confirmed_hours DESC`
+        }
+    };
+
+    if (!exports[type]) {
+        return res.status(400).json({ error: 'Invalid export type.' });
+    }
+
+    try {
+        const [rows] = await db.execute(exports[type].query);
+        const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+        const csv = [
+            headers.map(csvEscape).join(','),
+            ...rows.map(row => headers.map(header => csvEscape(row[header])).join(','))
+        ].join('\n');
+
+        await writeAuditLog(req.user.user_id, `export_${type}`, 'Export', type, `Admin exported ${type}.`);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${exports[type].filename}"`);
+        res.send(csv);
+    } catch (err) {
+        console.error('Admin export error:', err);
+        res.status(500).json({ error: 'Failed to export data.' });
     }
 });
 
@@ -777,7 +1500,7 @@ app.get('/api/ngo-profile', authenticateToken, async (req, res) => {
         if (!ngoId) return res.status(400).json({ success: false, message: "NGO ID is required" });
 
         const [ngo] = await db.execute(`
-            SELECT NGOs.name, Users.email, NGOs.description, NGOs.address, NGOs.logo
+            SELECT NGOs.name, Users.email, NGOs.description, NGOs.address, NGOs.logo, NGOs.approval_status
             FROM NGOs
             JOIN Users ON Users.ngo_id = NGOs.ngo_id
             WHERE NGOs.ngo_id = ?
@@ -789,7 +1512,8 @@ app.get('/api/ngo-profile', authenticateToken, async (req, res) => {
                 email: ngo[0].email,
                 description: ngo[0].description,
                 address: ngo[0].address,
-                logo: ngo[0].logo
+                logo: ngo[0].logo,
+                approval_status: ngo[0].approval_status
             });
         }
 
@@ -846,7 +1570,13 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
             SELECT 
                 u.user_id, u.name, u.email,
                 v.volunteer_id, v.phone, v.city, v.skills, v.interests, 
-                v.image_url, v.Date_of_Birth, v.experiences
+                v.image_url, v.Date_of_Birth, v.experiences,
+                COALESCE((
+                    SELECT SUM(a.hours_completed)
+                    FROM Applications a
+                    WHERE a.volunteer_id = v.volunteer_id
+                      AND a.attendance_confirmed = 'YES'
+                ), 0) AS total_hours
             FROM Users u
             LEFT JOIN Volunteers v ON u.user_id = v.user_id
             WHERE u.user_id = ?
@@ -863,7 +1593,8 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
             skills: d.skills ? d.skills.split(',').map(s => s.trim()) : [],
             experiences: d.experiences ? d.experiences.split(',').map(e => e.trim()) : [],
             imageUrl: d.image_url || 'default-profile.jpg',
-            dateOfBirth: d.Date_of_Birth ? new Date(d.Date_of_Birth).toLocaleDateString() : 'Not provided'
+            dateOfBirth: d.Date_of_Birth ? new Date(d.Date_of_Birth).toLocaleDateString() : 'Not provided',
+            totalHours: Number(d.total_hours) || 0
         });
     } catch (err) {
         console.error('Error fetching profile:', err);
