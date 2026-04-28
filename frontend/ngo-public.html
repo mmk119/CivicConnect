@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NGO Profile - CivicConnect</title>
+  <script src="notifications.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #10253d;
+      background: #f7f4ef;
+    }
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 48px;
+      color: #fff;
+      background: linear-gradient(90deg, #1087ee, #ff6800);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 1.7rem;
+      font-weight: 900;
+    }
+    .brand img {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+      border-radius: 12px;
+      padding: 5px;
+      background: #fff;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+    .nav-links a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .page {
+      width: min(1160px, calc(100% - 40px));
+      margin: 34px auto;
+    }
+    .profile-hero {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 26px;
+      align-items: center;
+      padding: 32px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 16px 38px rgba(13, 43, 69, 0.12);
+      margin-bottom: 24px;
+    }
+    .ngo-logo {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: #eef5fb;
+      border: 1px solid #dce8f2;
+      padding: 12px;
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      margin-bottom: 12px;
+      color: #08233c;
+    }
+    .description {
+      color: #4a6274;
+      line-height: 1.7;
+      max-width: 760px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 16px;
+      color: #4a6274;
+      font-weight: 700;
+    }
+    .meta i { color: #1087ee; margin-right: 6px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat {
+      padding: 22px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(13, 43, 69, 0.08);
+    }
+    .stat strong {
+      display: block;
+      font-size: 2rem;
+      color: #1087ee;
+    }
+    .section-title {
+      margin-bottom: 16px;
+      font-size: 1.7rem;
+      color: #08233c;
+    }
+    .opportunity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 20px;
+    }
+    .opportunity-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(13, 43, 69, 0.08);
+    }
+    .opportunity-card::before {
+      content: "";
+      height: 5px;
+      background: linear-gradient(90deg, #1087ee, #3ddbd9);
+    }
+    .card-body {
+      flex: 1;
+      padding: 22px;
+    }
+    .field {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      color: #c75b00;
+      background: #fff4e8;
+      font-weight: 800;
+      font-size: 0.82rem;
+    }
+    .opportunity-card h3 {
+      margin-bottom: 10px;
+      color: #08233c;
+    }
+    .opportunity-card p {
+      color: #4a6274;
+      line-height: 1.55;
+    }
+    .card-footer {
+      padding: 16px 22px;
+      background: #f4f6f8;
+    }
+    .details-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #1087ee;
+      text-decoration: none;
+      font-weight: 900;
+    }
+    .empty {
+      padding: 34px;
+      border-radius: 14px;
+      color: #4a6274;
+      background: #fff;
+      text-align: center;
+    }
+    @media (max-width: 720px) {
+      .navbar { padding: 16px 22px; flex-direction: column; align-items: flex-start; }
+      .profile-hero { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="landingpage.html">
+      <img src="logo.png" alt="CivicConnect Logo">
+      CivicConnect
+    </a>
+    <div class="nav-links">
+      <a href="opportunities.html">Opportunities</a>
+      <a href="about.html">About Us</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="profile-hero">
+      <img id="ngo-logo" class="ngo-logo" src="logo.png" alt="NGO logo">
+      <div>
+        <h1 id="ngo-name">Loading...</h1>
+        <p class="description" id="ngo-description"></p>
+        <div class="meta">
+          <span><i class="fas fa-location-dot"></i><span id="ngo-address"></span></span>
+          <span><i class="fas fa-envelope"></i><span id="ngo-email"></span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <strong id="posted-count">0</strong>
+        <span>Opportunities Posted</span>
+      </div>
+      <div class="stat">
+        <strong id="volunteers-count">0</strong>
+        <span>Volunteers Helped</span>
+      </div>
+      <div class="stat">
+        <strong id="hours-count">0</strong>
+        <span>Total Hours Hosted</span>
+      </div>
+    </section>
+
+    <h2 class="section-title">Opportunities by this NGO</h2>
+    <section class="opportunity-grid" id="opportunities-list"></section>
+  </main>
+
+  <script>
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) return "Not available";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Not available";
+      return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    async function loadNgoProfile() {
+      const ngoId = new URLSearchParams(window.location.search).get("id");
+      if (!ngoId) {
+        document.getElementById("opportunities-list").innerHTML = "<div class='empty'>No NGO selected.</div>";
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/ngo-public/${ngoId}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load NGO profile.");
+
+        document.title = `${data.name} - CivicConnect`;
+        document.getElementById("ngo-name").textContent = data.name;
+        document.getElementById("ngo-description").textContent = data.description || "No description provided.";
+        document.getElementById("ngo-address").textContent = data.address || "No address provided.";
+        document.getElementById("ngo-email").textContent = data.email || "No email provided.";
+        document.getElementById("posted-count").textContent = Number(data.opportunities_posted) || 0;
+        document.getElementById("volunteers-count").textContent = Number(data.total_volunteers_helped) || 0;
+        document.getElementById("hours-count").textContent = Number(data.total_hours_hosted) || 0;
+
+        if (data.logo) {
+          document.getElementById("ngo-logo").src = data.logo;
+        }
+
+        const list = document.getElementById("opportunities-list");
+        const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
+        if (opportunities.length === 0) {
+          list.innerHTML = "<div class='empty'>This NGO has not posted opportunities yet.</div>";
+          return;
+        }
+
+        list.innerHTML = opportunities.map(opp => `
+          <article class="opportunity-card">
+            <div class="card-body">
+              <span class="field">${escapeHTML(opp.field || "General")}</span>
+              <h3>${escapeHTML(opp.title)}</h3>
+              <p>${escapeHTML(opp.description || "No description.")}</p>
+              <p><i class="fas fa-location-dot"></i> ${escapeHTML(opp.location || "Location TBD")}</p>
+              <p><i class="fas fa-calendar-day"></i> ${formatDate(opp.start_date)} - ${formatDate(opp.end_date)}</p>
+              <p><i class="fas fa-users"></i> ${Number(opp.capacity) || 0} volunteers needed</p>
+            </div>
+            <div class="card-footer">
+              <a class="details-link" href="detailedView.html?id=${opp.opportunity_id}">
+                <i class="fas fa-arrow-up-right-from-square"></i> View Details
+              </a>
+            </div>
+          </article>
+        `).join("");
+      } catch (err) {
+        document.getElementById("opportunities-list").innerHTML = `<div class='empty'>${escapeHTML(err.message)}</div>`;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadNgoProfile);
+  </script>
+</body>
+</html>

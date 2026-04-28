@@ -46,6 +46,56 @@ function requireNgoAccess() {
     return payload;
 }
 
+async function loadNgoApprovalStatus() {
+    const token = localStorage.getItem("token");
+    const notice = document.getElementById("approvalNotice");
+    const form = document.getElementById("opportunityForm");
+    const previewBtn = document.getElementById("previewBtn");
+    const submitBtn = document.getElementById("submitBtn");
+
+    try {
+        const response = await fetch("/api/ngo-profile", {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) throw new Error("Could not load NGO approval status.");
+
+        const data = await response.json();
+        const status = data.approval_status || "pending";
+        const canPost = status === "approved";
+
+        if (!canPost) {
+            notice.classList.remove("d-none");
+            notice.textContent = status === "rejected"
+                ? "Your NGO account was rejected by the admin, so you cannot post opportunities."
+                : "Your NGO account is pending admin approval. You can post opportunities after approval.";
+        } else {
+            notice.classList.add("d-none");
+            notice.textContent = "";
+        }
+
+        form.querySelectorAll("input, textarea, select").forEach(control => {
+            control.disabled = !canPost;
+        });
+        previewBtn.disabled = !canPost;
+        submitBtn.disabled = !canPost;
+
+        return canPost;
+    } catch (error) {
+        console.error(error);
+        notice.classList.remove("d-none");
+        notice.textContent = "Could not verify NGO approval status. Please refresh or log in again.";
+        form.querySelectorAll("input, textarea, select").forEach(control => {
+            control.disabled = true;
+        });
+        previewBtn.disabled = true;
+        submitBtn.disabled = true;
+        return false;
+    }
+}
+
 function loadOpportunities() {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -76,7 +126,7 @@ function loadOpportunities() {
                 const li = document.createElement("li");
                 li.className = "list-group-item d-flex justify-content-between align-items-center";
                 li.innerHTML = `
-                    <span>${op.title} - ${new Date(op.start_date).toDateString()} - ${op.location}</span>
+                    <span>${op.title} - ${op.field || "No field"} - ${op.hours_required || 0} hours - ${op.accepted_count || 0}/${op.capacity || 0} volunteers - ${new Date(op.start_date).toDateString()} - ${op.location}</span>
                     <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${op.opportunity_id})">
                         Delete
                     </button>`;
@@ -95,22 +145,38 @@ function submitOpportunity() {
     if (!payload) return;
 
     const title = document.getElementById("title").value.trim();
+    const field = document.getElementById("field").value;
     const description = document.getElementById("description").value.trim();
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
+    const hoursRequired = Number(document.getElementById("hours_required").value);
+    const capacity = Number(document.getElementById("capacity").value);
     const location = document.getElementById("location").value.trim();
 
-    if (!title || !description || !startDate || !endDate || !location) {
+    if (!title || !field || !description || !startDate || !endDate || !hoursRequired || !capacity || !location) {
         alert("Please fill in all fields before submitting.");
+        return;
+    }
+
+    if (!Number.isInteger(hoursRequired) || hoursRequired < 1) {
+        alert("Hours required must be a positive whole number.");
+        return;
+    }
+
+    if (!Number.isInteger(capacity) || capacity < 1) {
+        alert("Number of volunteers needed must be a positive whole number.");
         return;
     }
 
     const token = localStorage.getItem("token");
     const opportunityData = {
         title,
+        field,
         description,
         start_date: startDate,
         end_date: endDate,
+        hours_required: hoursRequired,
+        capacity,
         location
     };
 
@@ -168,9 +234,12 @@ function loadPreviewIntoForm() {
     const opportunity = JSON.parse(storedData);
 
     document.getElementById("title").value = opportunity.title || "";
+    document.getElementById("field").value = opportunity.field || "";
     document.getElementById("description").value = opportunity.description || "";
     document.getElementById("start_date").value = opportunity.start_date || "";
     document.getElementById("end_date").value = opportunity.end_date || "";
+    document.getElementById("hours_required").value = opportunity.hours_required || "";
+    document.getElementById("capacity").value = opportunity.capacity || "";
     document.getElementById("location").value = opportunity.location || "";
 }
 
@@ -179,21 +248,37 @@ function showPreview() {
     if (!payload) return;
 
     const title = document.getElementById("title").value.trim();
+    const field = document.getElementById("field").value;
     const description = document.getElementById("description").value.trim();
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
+    const hoursRequired = Number(document.getElementById("hours_required").value);
+    const capacity = Number(document.getElementById("capacity").value);
     const location = document.getElementById("location").value.trim();
 
-    if (!title || !description || !startDate || !endDate || !location) {
+    if (!title || !field || !description || !startDate || !endDate || !hoursRequired || !capacity || !location) {
         alert("Please fill in all required fields before previewing.");
+        return;
+    }
+
+    if (!Number.isInteger(hoursRequired) || hoursRequired < 1) {
+        alert("Hours required must be a positive whole number.");
+        return;
+    }
+
+    if (!Number.isInteger(capacity) || capacity < 1) {
+        alert("Number of volunteers needed must be a positive whole number.");
         return;
     }
 
     const previewData = {
         title,
+        field,
         description,
         start_date: startDate,
         end_date: endDate,
+        hours_required: hoursRequired,
+        capacity,
         location
     };
 
@@ -218,6 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     loadOpportunities(payload.ngo_id);
+    loadNgoApprovalStatus();
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("fromPreview") === "1") {

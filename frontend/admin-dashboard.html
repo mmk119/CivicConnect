@@ -1,295 +1,978 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const token = localStorage.getItem("token");
-            const userRole = localStorage.getItem("userRole");
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - CivicConnect</title>
+  <script src="notifications.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-            if (!token) {
-                window.location.href = "login.html";
-                return;
-            }
+    body {
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #10253d;
+      background: #f5f7fb;
+    }
 
-            if (userRole !== "Admin") {
-                alert("Access denied. Admin privileges required.");
-                window.location.href = "dashboard.html";
-                return;
-            }
-        });
-    </script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 18px 42px;
+      color: #fff;
+      background: linear-gradient(90deg, #1087ee 0%, #ff6800 100%);
+      box-shadow: 0 10px 28px rgba(16, 37, 61, 0.16);
+    }
 
-        .tabs {
-            margin-bottom: 20px;
-        }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 1.55rem;
+      font-weight: 900;
+    }
 
-        .tab-button {
-            padding: 10px 20px;
-            margin-right: 10px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-        }
+    .brand img {
+      width: 56px;
+      height: 56px;
+      padding: 5px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #fff;
+    }
 
-        .tab-button.active {
-            background: #007bff;
-            color: white;
-        }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-        .content-section {
-            display: none;
-        }
+    .top-actions a,
+    .top-actions button {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 0.96rem;
+    }
 
-        .content-section.active {
-            display: block;
-        }
+    .logout-btn {
+      border: 1px solid rgba(255, 255, 255, 0.45) !important;
+      border-radius: 10px !important;
+      padding: 11px 16px !important;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 92px);
+    }
 
-        th,
-        td {
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
+    .sidebar {
+      padding: 28px 18px;
+      background: #071a33;
+      color: #dce8f7;
+    }
 
-        .action-button {
-            padding: 5px 10px;
-            margin: 0 5px;
-            cursor: pointer;
-        }
+    .sidebar-title {
+      margin: 0 12px 18px;
+      color: #8ba5bf;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 900;
+    }
 
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-        }
+    .tab-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 14px;
+      margin-bottom: 8px;
+      color: #dce8f7;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 800;
+      text-align: left;
+    }
 
-        .approve-btn {
-            background: #28a745;
-        }
+    .tab-button.active,
+    .tab-button:hover {
+      background: rgba(18, 133, 243, 0.18);
+      border-color: rgba(67, 214, 216, 0.28);
+      color: #fff;
+    }
 
-        .reject-btn {
-            background: #6c757d;
-        }
+    .main {
+      padding: 32px;
+      overflow-x: hidden;
+    }
 
-        .ngo-card {
-            padding: 15px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-        }
+    .section {
+      display: none;
+    }
 
-        .status-active {
-            color: #28a745;
-        }
+    .section.active {
+      display: block;
+    }
 
-        .status-banned {
-            color: #dc3545;
-        }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
 
-        .status-select {
-            padding: 5px;
-            margin-right: 10px;
-        }
-    </style>
+    .section-header h1,
+    .section-header h2 {
+      font-size: 1.9rem;
+      color: #08233c;
+    }
+
+    .section-header p {
+      margin-top: 6px;
+      color: #61758a;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card,
+    .panel {
+      border: 1px solid #e1e8ef;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(16, 37, 61, 0.08);
+    }
+
+    .stat-card {
+      padding: 18px;
+    }
+
+    .stat-card i {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      color: #0877da;
+      background: #e7f4ff;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 1.9rem;
+      font-weight: 900;
+      color: #08233c;
+    }
+
+    .stat-label {
+      color: #61758a;
+      font-weight: 700;
+    }
+
+    .panel {
+      padding: 18px;
+      margin-bottom: 22px;
+    }
+
+    .panel h3 {
+      margin-bottom: 14px;
+      color: #08233c;
+    }
+
+    .tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .tools input,
+    .tools select {
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid #cdd8e3;
+      border-radius: 10px;
+      font: inherit;
+      background: #fff;
+    }
+
+    .btn {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 13px;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      background: #1285f3;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .btn.secondary {
+      background: #10253d;
+    }
+
+    .btn.success {
+      background: #23a64a;
+    }
+
+    .btn.danger {
+      background: #d83b3b;
+    }
+
+    .btn.muted {
+      color: #10253d;
+      background: #e8eef5;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #e1e8ef;
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 880px;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid #edf1f5;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #4d647a;
+      background: #f8fafc;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: capitalize;
+    }
+
+    .badge.pending {
+      color: #946200;
+      background: #fff3cd;
+    }
+
+    .badge.approved,
+    .badge.accepted,
+    .badge.active,
+    .badge.yes {
+      color: #137b2c;
+      background: #d9f5df;
+    }
+
+    .badge.rejected,
+    .badge.banned,
+    .badge.no {
+      color: #b42323;
+      background: #ffe0e0;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+    }
+
+    .mini-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid #edf1f5;
+      color: #4d647a;
+    }
+
+    .mini-list li:last-child {
+      border-bottom: none;
+    }
+
+    .notification {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px 0;
+      border-bottom: 1px solid #edf1f5;
+    }
+
+    .notification:last-child {
+      border-bottom: none;
+    }
+
+    .empty {
+      padding: 24px;
+      color: #61758a;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 22px;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        padding: 16px;
+      }
+
+      .sidebar-title {
+        grid-column: 1 / -1;
+      }
+
+      .main {
+        padding: 22px 14px;
+      }
+    }
+  </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="tabs">
-            <button class="tab-button active" onclick="showTab('users')">Users</button>
-            <button class="tab-button" onclick="showTab('ngos')">NGOs</button>
-        </div>
+  <header class="topbar">
+    <a class="brand" href="landingpage.html">
+      <img src="logo.png" alt="CivicConnect Logo">
+      CivicConnect Admin
+    </a>
+    <div class="top-actions">
+      <a href="landingpage.html">Home</a>
+      <button class="logout-btn" type="button" onclick="logout()">Log Out</button>
+    </div>
+  </header>
 
-        <div id="users-section" class="content-section active">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">Admin Tools</div>
+      <button class="tab-button active" data-tab="overview"><i class="fas fa-chart-line"></i> Overview</button>
+      <button class="tab-button" data-tab="users"><i class="fas fa-users"></i> Users</button>
+      <button class="tab-button" data-tab="ngos"><i class="fas fa-building"></i> NGO Approvals</button>
+      <button class="tab-button" data-tab="opportunities"><i class="fas fa-briefcase"></i> Opportunities</button>
+      <button class="tab-button" data-tab="applications"><i class="fas fa-file-signature"></i> Applications</button>
+      <button class="tab-button" data-tab="audit"><i class="fas fa-shield-halved"></i> Audit Log</button>
+      <button class="tab-button" data-tab="exports"><i class="fas fa-file-export"></i> Exports</button>
+    </aside>
+
+    <main class="main">
+      <section id="overview-section" class="section active">
+        <div class="section-header">
+          <div>
+            <h1>Admin Overview</h1>
+            <p>Platform health, moderation tasks, analytics, and pending work.</p>
+          </div>
+          <button class="btn secondary" onclick="loadAll()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="cards-grid" id="stats-cards"></div>
+        <div class="split-grid">
+          <div class="panel">
+            <h3>Admin Notifications</h3>
+            <div id="notifications-list"></div>
+          </div>
+          <div class="panel">
+            <h3>Most Popular Fields</h3>
+            <ul class="mini-list" id="fields-list"></ul>
+          </div>
+          <div class="panel">
+            <h3>Top Volunteers</h3>
+            <ul class="mini-list" id="top-volunteers-list"></ul>
+          </div>
+          <div class="panel">
+            <h3>Most Active NGOs</h3>
+            <ul class="mini-list" id="top-ngos-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="users-section" class="section">
+        <div class="section-header">
+          <div>
             <h2>User Management</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="users-list"></tbody>
-            </table>
+            <p>Search users, ban or unban accounts, and remove unsafe accounts.</p>
+          </div>
+          <button class="btn" onclick="loadUsers()"><i class="fas fa-rotate"></i> Refresh</button>
         </div>
-
-        <div id="ngos-section" class="content-section">
-            <h2>Pending NGO Applications</h2>
-            <div id="ngos-list"></div>
+        <div class="tools">
+          <input id="user-search" type="search" placeholder="Search name or email">
+          <select id="user-role">
+            <option value="">All roles</option>
+            <option value="Volunteer">Volunteer</option>
+            <option value="NGO">NGO</option>
+            <option value="Admin">Admin</option>
+          </select>
+          <select id="user-status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="banned">Banned</option>
+          </select>
+          <button class="btn" onclick="loadUsers()"><i class="fas fa-search"></i> Search</button>
         </div>
-    </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Verified</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-list"></tbody>
+          </table>
+        </div>
+      </section>
 
-    <script>
-        // Tab Navigation
-        function showTab(tabName) {
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(`${tabName}-section`).classList.add('active');
-            event.target.classList.add('active');
-        }
+      <section id="ngos-section" class="section">
+        <div class="section-header">
+          <div>
+            <h2>NGO Approval Management</h2>
+            <p>Approve trustworthy NGOs, reject incomplete applications, and review all NGO records.</p>
+          </div>
+          <button class="btn" onclick="loadNgos()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="tools">
+          <input id="ngo-search" type="search" placeholder="Search NGO, email, address">
+          <select id="ngo-status">
+            <option value="">All approval statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button class="btn" onclick="loadNgos()"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>NGO</th>
+                <th>Email</th>
+                <th>Address</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Reason</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ngos-list"></tbody>
+          </table>
+        </div>
+      </section>
 
-        // Load Users
-        async function loadUsers() {
-            try {
-                const response = await fetch('/api/admin/users', {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
-                const users = await response.json();
+      <section id="opportunities-section" class="section">
+        <div class="section-header">
+          <div>
+            <h2>Opportunity Moderation</h2>
+            <p>Review all posted opportunities and remove inappropriate listings.</p>
+          </div>
+          <button class="btn" onclick="loadOpportunities()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="tools">
+          <input id="opportunity-search" type="search" placeholder="Search opportunity, NGO, location">
+          <select id="opportunity-field">
+            <option value="">All fields</option>
+            <option>Education</option>
+            <option>Health</option>
+            <option>Environment</option>
+            <option>Community</option>
+            <option>Elderly Care</option>
+            <option>Children & Youth</option>
+            <option>Disability Support</option>
+            <option>Food Distribution</option>
+            <option>Other</option>
+          </select>
+          <select id="opportunity-status">
+            <option value="">Upcoming and passed</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="passed">Passed</option>
+          </select>
+          <button class="btn" onclick="loadOpportunities()"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>NGO</th>
+                <th>Field</th>
+                <th>Location</th>
+                <th>Dates</th>
+                <th>Hours</th>
+                <th>Applications</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="opportunities-list"></tbody>
+          </table>
+        </div>
+      </section>
 
-                document.getElementById('users-list').innerHTML = users.map(user => `
-                    <tr>
-                        <td>${user.name}</td>
-                        <td>${user.email}</td>
-                        <td>${user.role}</td>
-                        <td class="status-${user.account_status}">${user.account_status}</td>
-                        <td>
-                            <select class="status-select" onchange="updateAccountStatus(${user.user_id}, this.value)">
-                                <option value="active" ${user.account_status === 'active' ? 'selected' : ''}>Active</option>
-                                <option value="banned" ${user.account_status === 'banned' ? 'selected' : ''}>Banned</option>
-                            </select>
-                            <button class="action-button delete-btn" 
-                                    onclick="deleteUser(${user.user_id})">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-            } catch (error) {
-                console.error('Error loading users:', error);
-            }
-        }
+      <section id="applications-section" class="section">
+        <div class="section-header">
+          <div>
+            <h2>Application Oversight</h2>
+            <p>See application status, confirmed hours, volunteer names, and NGO names in one place.</p>
+          </div>
+          <button class="btn" onclick="loadApplications()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="tools">
+          <input id="application-search" type="search" placeholder="Search volunteer, NGO, opportunity">
+          <select id="application-status">
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button class="btn" onclick="loadApplications()"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Volunteer</th>
+                <th>Opportunity</th>
+                <th>NGO</th>
+                <th>Status</th>
+                <th>Applied</th>
+                <th>Hours</th>
+                <th>Attendance</th>
+              </tr>
+            </thead>
+            <tbody id="applications-list"></tbody>
+          </table>
+        </div>
+      </section>
 
-        // Load NGOs
-        async function loadNGOs() {
-            try {
-                const response = await fetch('/api/admin/ngos/pending', {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
+      <section id="audit-section" class="section">
+        <div class="section-header">
+          <div>
+            <h2>Audit Log</h2>
+            <p>Accountability trail for admin approvals, bans, deletes, and exports.</p>
+          </div>
+          <button class="btn" onclick="loadAuditLogs()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Admin</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Details</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="audit-list"></tbody>
+          </table>
+        </div>
+      </section>
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to load NGOs');
-                }
+      <section id="exports-section" class="section">
+        <div class="section-header">
+          <div>
+            <h2>Export Data</h2>
+            <p>Download platform data for professor review, reports, or admin records.</p>
+          </div>
+        </div>
+        <div class="cards-grid">
+          <button class="btn secondary" onclick="exportCsv('users')"><i class="fas fa-users"></i> Export Users</button>
+          <button class="btn secondary" onclick="exportCsv('ngos')"><i class="fas fa-building"></i> Export NGOs</button>
+          <button class="btn secondary" onclick="exportCsv('opportunities')"><i class="fas fa-briefcase"></i> Export Opportunities</button>
+          <button class="btn secondary" onclick="exportCsv('applications')"><i class="fas fa-file-signature"></i> Export Applications</button>
+          <button class="btn secondary" onclick="exportCsv('hours')"><i class="fas fa-clock"></i> Export Volunteer Hours</button>
+        </div>
+      </section>
+    </main>
+  </div>
 
-                const ngos = await response.json();
+  <script>
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole") || localStorage.getItem("role");
 
-                if (!Array.isArray(ngos)) {
-                    throw new Error('Invalid response format: Expected array');
-                }
+    if (!token || role !== "Admin") {
+      alert("Access denied. Admin privileges required.");
+      window.location.href = "login.html";
+    }
 
-                document.getElementById('ngos-list').innerHTML = ngos.map(ngo => `
-    <div class="ngo-card">
-        <h3>${ngo.name}</h3>
-        <p>${ngo.description}</p>
-        <button class="action-button approve-btn" 
-                onclick="approveNgo(${ngo.ngo_id})"> <!-- Changed to ngo_id -->
-            Approve
-        </button>
-        <button class="action-button reject-btn" 
-                onclick="rejectNgo(${ngo.ngo_id})"> <!-- Changed to ngo_id -->
-            Reject
-        </button>
-    </div>
-`).join('');
+    function authHeaders() {
+      return { Authorization: `Bearer ${token}` };
+    }
 
-            } catch (error) {
-                console.error('Error loading NGOs:', error);
-                alert(error.message);
-            }
-        }
+    function jsonHeaders() {
+      return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+    }
 
-        // Delete User
-        async function deleteUser(userId) {
-            if (confirm('Are you sure you want to delete this user?')) {
-                await fetch(`/api/admin/users/${userId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
-                loadUsers();
-            }
-        }
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
-        // Update Account Status
-        async function updateAccountStatus(userId, status) {
-            try {
-                const response = await fetch(`/api/admin/users/${userId}/status`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify({ status })
-                });
+    function formatDate(value) {
+      if (!value) return "Not available";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Not available";
+      return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
 
-                if (!response.ok) throw new Error('Status update failed');
-                loadUsers();
-            } catch (error) {
-                console.error('Error:', error);
-                alert(error.message);
-            }
-        }
+    function badge(value) {
+      const clean = String(value || "unknown").toLowerCase();
+      return `<span class="badge ${clean}">${escapeHTML(value || "unknown")}</span>`;
+    }
 
-        // Approve NGO
-        async function approveNgo(ngoId) {
-            await fetch(`/api/admin/ngos/${ngoId}/approve`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            loadNGOs();
-        }
+    function setRows(id, rows, colspan) {
+      document.getElementById(id).innerHTML = rows || `<tr><td class="empty" colspan="${colspan}">No records found.</td></tr>`;
+    }
 
-        // Reject NGO
-        async function rejectNgo(ngoId) {
-            try {
-                const response = await fetch(`/api/admin/ngos/${ngoId}/reject`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
+    async function api(path, options = {}) {
+      const response = await fetch(path, options);
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401 || response.status === 403) {
+        alert(data.error || "Admin session expired.");
+        logout();
+        return null;
+      }
+      if (!response.ok) throw new Error(data.error || "Request failed.");
+      return data;
+    }
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Rejection failed');
-                }
+    function showTab(tabName) {
+      document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
+      document.querySelectorAll(".tab-button").forEach(button => button.classList.remove("active"));
+      document.getElementById(`${tabName}-section`).classList.add("active");
+      document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
+    }
 
-                loadNGOs();
-                alert('NGO rejected successfully');
-            } catch (error) {
-                console.error('Rejection error:', error);
-                alert(error.message);
-            }
-        }
+    document.querySelectorAll(".tab-button").forEach(button => {
+      button.addEventListener("click", () => showTab(button.dataset.tab));
+    });
 
-        // Initial load
-        loadUsers();
-        loadNGOs();
-    </script>
+    async function loadOverview() {
+      const data = await api("/api/admin/overview", { headers: authHeaders() });
+      if (!data) return;
+      const stats = data.stats || {};
+      const cards = [
+        ["fa-users", "Total Users", stats.total_users],
+        ["fa-hand-holding-heart", "Volunteers", stats.volunteers],
+        ["fa-building", "NGOs", stats.ngos],
+        ["fa-user-shield", "Admins", stats.admins],
+        ["fa-hourglass-half", "Pending NGOs", stats.pending_ngos],
+        ["fa-briefcase", "Opportunities", stats.total_opportunities],
+        ["fa-file-signature", "Applications", stats.total_applications],
+        ["fa-clock", "Confirmed Hours", stats.confirmed_hours]
+      ];
+
+      document.getElementById("stats-cards").innerHTML = cards.map(([icon, label, value]) => `
+        <div class="stat-card">
+          <i class="fas ${icon}"></i>
+          <span class="stat-value">${Number(value) || 0}</span>
+          <span class="stat-label">${label}</span>
+        </div>
+      `).join("");
+
+      document.getElementById("fields-list").innerHTML = (data.popularFields || []).map(item => `
+        <li><span>${escapeHTML(item.field || "General")}</span><strong>${Number(item.total) || 0}</strong></li>
+      `).join("") || "<li>No fields yet</li>";
+
+      document.getElementById("top-volunteers-list").innerHTML = (data.topVolunteers || []).map(item => `
+        <li><span>${escapeHTML(item.name)}<br><small>${escapeHTML(item.email)}</small></span><strong>${Number(item.total_hours) || 0} hrs</strong></li>
+      `).join("") || "<li>No confirmed hours yet</li>";
+
+      document.getElementById("top-ngos-list").innerHTML = (data.topNgos || []).map(item => `
+        <li><span>${escapeHTML(item.name)}</span><strong>${Number(item.total_opportunities) || 0}</strong></li>
+      `).join("") || "<li>No NGOs yet</li>";
+    }
+
+    async function loadNotifications() {
+      const notifications = await api("/api/admin/notifications", { headers: authHeaders() });
+      if (!notifications) return;
+      document.getElementById("notifications-list").innerHTML = notifications.map(item => `
+        <div class="notification">
+          <span>${escapeHTML(item.message)}</span>
+          <strong>${Number(item.count) || 0}</strong>
+        </div>
+      `).join("");
+    }
+
+    async function loadUsers() {
+      const params = new URLSearchParams({
+        search: document.getElementById("user-search").value,
+        role: document.getElementById("user-role").value,
+        status: document.getElementById("user-status").value
+      });
+      const users = await api(`/api/admin/users?${params}`, { headers: authHeaders() });
+      if (!users) return;
+      setRows("users-list", users.map(user => `
+        <tr>
+          <td>${escapeHTML(user.name)}</td>
+          <td>${escapeHTML(user.email)}</td>
+          <td>${escapeHTML(user.role)}</td>
+          <td>${badge(user.Verified)}</td>
+          <td>${badge(user.account_status)}</td>
+          <td>${formatDate(user.created_at)}</td>
+          <td>
+            <button class="btn muted" onclick="updateAccountStatus(${user.user_id}, '${user.account_status === "active" ? "banned" : "active"}')">
+              ${user.account_status === "active" ? "Ban" : "Unban"}
+            </button>
+            <button class="btn danger" onclick="deleteUser(${user.user_id})">Delete</button>
+          </td>
+        </tr>
+      `).join(""), 7);
+    }
+
+    async function updateAccountStatus(userId, status) {
+      await api(`/api/admin/users/${userId}/status`, {
+        method: "PATCH",
+        headers: jsonHeaders(),
+        body: JSON.stringify({ status })
+      });
+      await loadUsers();
+      await loadOverview();
+      await loadAuditLogs();
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm("Are you sure you want to delete this user?")) return;
+      await api(`/api/admin/users/${userId}`, { method: "DELETE", headers: authHeaders() });
+      await loadUsers();
+      await loadOverview();
+      await loadAuditLogs();
+    }
+
+    async function loadNgos() {
+      try {
+        const params = new URLSearchParams({
+          search: document.getElementById("ngo-search").value,
+          status: document.getElementById("ngo-status").value
+        });
+        const ngos = await api(`/api/admin/ngos?${params}`, { headers: authHeaders() });
+        if (!ngos) return;
+        setRows("ngos-list", ngos.map(ngo => {
+          const status = String(ngo.approval_status || "").toLowerCase();
+          let actions = "";
+
+          if (status === "pending") {
+            actions = `
+              <button class="btn success" onclick="approveNgo(${ngo.ngo_id})">Approve</button>
+              <button class="btn danger" onclick="rejectNgo(${ngo.ngo_id})">Reject</button>
+            `;
+          } else if (status === "approved") {
+            actions = `
+              <span class="badge approved">Approved</span>
+              <button class="btn danger" onclick="rejectNgo(${ngo.ngo_id})">Reject</button>
+            `;
+          } else if (status === "rejected") {
+            actions = `
+              <button class="btn success" onclick="approveNgo(${ngo.ngo_id})">Approve</button>
+              <span class="badge rejected">Rejected</span>
+            `;
+          } else {
+            actions = "<span class='badge'>No actions</span>";
+          }
+
+          return `
+            <tr>
+              <td><strong>${escapeHTML(ngo.name)}</strong></td>
+              <td>${escapeHTML(ngo.email)}</td>
+              <td>${escapeHTML(ngo.address || "Not provided")}</td>
+              <td>${escapeHTML(ngo.description || "No description")}</td>
+              <td>${badge(ngo.approval_status)}</td>
+              <td>${escapeHTML(ngo.rejection_reason || "")}</td>
+              <td>${actions}</td>
+            </tr>
+          `;
+        }).join(""), 7);
+      } catch (err) {
+        setRows("ngos-list", `<tr><td class="empty" colspan="7">${escapeHTML(err.message)}</td></tr>`, 7);
+      }
+    }
+
+    async function approveNgo(ngoId) {
+      await api(`/api/admin/ngos/${ngoId}/approve`, { method: "POST", headers: authHeaders() });
+      await loadNgos();
+      await loadOverview();
+      await loadNotifications();
+      await loadAuditLogs();
+    }
+
+    async function rejectNgo(ngoId) {
+      const reason = prompt("Optional rejection reason:");
+      await api(`/api/admin/ngos/${ngoId}/reject`, {
+        method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({ reason: reason || "" })
+      });
+      await loadNgos();
+      await loadOverview();
+      await loadNotifications();
+      await loadAuditLogs();
+    }
+
+    async function loadOpportunities() {
+      const params = new URLSearchParams({
+        search: document.getElementById("opportunity-search").value,
+        field: document.getElementById("opportunity-field").value,
+        status: document.getElementById("opportunity-status").value
+      });
+      const opportunities = await api(`/api/admin/opportunities?${params}`, { headers: authHeaders() });
+      if (!opportunities) return;
+      setRows("opportunities-list", opportunities.map(opp => `
+        <tr>
+          <td><strong>${escapeHTML(opp.title)}</strong><br><small>${escapeHTML(opp.description || "")}</small></td>
+          <td>${escapeHTML(opp.ngo_name)}</td>
+          <td>${escapeHTML(opp.field || "General")}</td>
+          <td>${escapeHTML(opp.location)}</td>
+          <td>${formatDate(opp.start_date)} - ${formatDate(opp.end_date)}</td>
+          <td>${Number(opp.hours_required) || 0}</td>
+          <td>${Number(opp.application_count) || 0}</td>
+          <td><button class="btn danger" onclick="deleteOpportunity(${opp.opportunity_id})">Delete</button></td>
+        </tr>
+      `).join(""), 8);
+    }
+
+    async function deleteOpportunity(id) {
+      if (!confirm("Delete this opportunity? This also removes its applications.")) return;
+      await api(`/api/admin/opportunities/${id}`, { method: "DELETE", headers: authHeaders() });
+      await loadOpportunities();
+      await loadOverview();
+      await loadAuditLogs();
+    }
+
+    async function loadApplications() {
+      const params = new URLSearchParams({
+        search: document.getElementById("application-search").value,
+        status: document.getElementById("application-status").value
+      });
+      const applications = await api(`/api/admin/applications?${params}`, { headers: authHeaders() });
+      if (!applications) return;
+      setRows("applications-list", applications.map(app => `
+        <tr>
+          <td>${escapeHTML(app.volunteer_name)}<br><small>${escapeHTML(app.volunteer_email)}</small></td>
+          <td>${escapeHTML(app.opportunity_title)}<br><small>${escapeHTML(app.field || "General")}</small></td>
+          <td>${escapeHTML(app.ngo_name)}</td>
+          <td>${badge(app.status)}</td>
+          <td>${formatDate(app.applied_at)}</td>
+          <td>${Number(app.hours_completed) || 0} / ${Number(app.hours_required) || 0}</td>
+          <td>${badge(app.attendance_confirmed)}</td>
+        </tr>
+      `).join(""), 7);
+    }
+
+    async function loadAuditLogs() {
+      const logs = await api("/api/admin/audit-logs", { headers: authHeaders() });
+      if (!logs) return;
+      setRows("audit-list", logs.map(log => `
+        <tr>
+          <td>${escapeHTML(log.admin_name || "System")}<br><small>${escapeHTML(log.admin_email || "")}</small></td>
+          <td>${escapeHTML(log.action)}</td>
+          <td>${escapeHTML(log.target_type)} #${escapeHTML(log.target_id || "")}</td>
+          <td>${escapeHTML(log.details || "")}</td>
+          <td>${formatDate(log.created_at)}</td>
+        </tr>
+      `).join(""), 5);
+    }
+
+    async function exportCsv(type) {
+      const response = await fetch(`/api/admin/export/${type}`, { headers: authHeaders() });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || "Export failed.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${type}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      await loadAuditLogs();
+    }
+
+    async function loadAll() {
+      await Promise.allSettled([
+        loadOverview(),
+        loadNotifications(),
+        loadUsers(),
+        loadNgos(),
+        loadOpportunities(),
+        loadApplications(),
+        loadAuditLogs()
+      ]);
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
+    loadAll();
+  </script>
 </body>
-
 </html>

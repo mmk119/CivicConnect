@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Preview Opportunity - CivicConnect</title>
+    <script src="notifications.js"></script>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -100,10 +101,13 @@
         <hr>
 
         <h4 id="previewTitle"></h4>
+        <p><strong>Field:</strong> <span id="previewField"></span></p>
         <p id="previewDescription"></p>
 
         <p><strong>Start Date:</strong> <span id="previewStartDate"></span></p>
         <p><strong>End Date:</strong> <span id="previewEndDate"></span></p>
+        <p><strong>Hours Required:</strong> <span id="previewHours"></span></p>
+        <p><strong>Volunteers Needed:</strong> <span id="previewCapacity"></span></p>
         <p><strong>Location:</strong> <span id="previewLocation"></span></p>
 
         <div>
@@ -151,9 +155,12 @@
             const opportunity = JSON.parse(storedData);
 
             document.getElementById("previewTitle").innerText = opportunity.title || "";
+            document.getElementById("previewField").innerText = opportunity.field || "";
             document.getElementById("previewDescription").innerText = opportunity.description || "";
             document.getElementById("previewStartDate").innerText = opportunity.start_date || "";
             document.getElementById("previewEndDate").innerText = opportunity.end_date || "";
+            document.getElementById("previewHours").innerText = opportunity.hours_required ? `${opportunity.hours_required} hours` : "";
+            document.getElementById("previewCapacity").innerText = opportunity.capacity ? `${opportunity.capacity} volunteers` : "";
             document.getElementById("previewLocation").innerText = opportunity.location || "";
         });
 

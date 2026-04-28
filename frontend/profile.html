@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Volunteer Profile - CivicConnect</title>
+  <script src="notifications.js"></script>
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -353,7 +354,7 @@
     /* ── ACTION BUTTONS ─────────────────── */
     .action-buttons {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 15px;
       margin-top: 30px;
       padding-top: 30px;
@@ -654,6 +655,13 @@
             </div>
             <div class="info-value" id="dob">Loading...</div>
           </div>
+
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-clock"></i> Total Volunteering Hours
+            </div>
+            <div class="info-value" id="total-hours">Loading...</div>
+          </div>
         </div>
 
         <!-- SKILLS SECTION -->
@@ -683,6 +691,9 @@
           <button id="edit-btn" class="btn-modern btn-primary-modern">
             <i class="fas fa-edit"></i> Edit Profile
           </button>
+          <a href="application-history.html" class="btn-modern btn-secondary-modern">
+            <i class="fas fa-list-check"></i> Application History
+          </a>
           <button id="logout-btn" class="btn-modern btn-secondary-modern">
             <i class="fas fa-sign-out-alt"></i> Log Out
           </button>
@@ -785,6 +796,7 @@
       const phoneField = document.getElementById("phone");
       const cityField = document.getElementById("city");
       const dobField = document.getElementById("dob");
+      const totalHoursField = document.getElementById("total-hours");
       const skillsContainer = document.getElementById("skills");
       const experiencesContainer = document.getElementById("experiences");
       const uploadPhotoInput = document.getElementById("upload-photo");
@@ -811,6 +823,7 @@
           phoneField.textContent = data.phone || 'Not provided';
           cityField.textContent = data.city || 'Not provided';
           dobField.textContent = data.dateOfBirth || 'Not provided';
+          totalHoursField.textContent = `${data.totalHours || 0} hours`;
 
           profilePicture.src = data.imageUrl || 'default-profile.jpg';
           profilePicture.onerror = function () {

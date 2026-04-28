@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard - CivicConnect</title>
+    <script src="notifications.js"></script>
 
     <link rel="stylesheet" href="dashboard.css">
 
@@ -34,11 +35,28 @@
 <!-- ===== CREATE FORM ===== -->
 <div class="dashboard-content">
     <h2 class="section-title">Create a New Volunteering Opportunity</h2>
+    <div id="approvalNotice" class="alert alert-warning d-none" role="alert"></div>
 
     <form id="opportunityForm">
         <div class="mb-3">
             <label class="form-label">Title</label>
             <input type="text" class="form-control" id="title" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Field</label>
+            <select class="form-control" id="field" required>
+                <option value="">Select Field</option>
+                <option value="Education">Education</option>
+                <option value="Health">Health</option>
+                <option value="Environment">Environment</option>
+                <option value="Community">Community</option>
+                <option value="Elderly Care">Elderly Care</option>
+                <option value="Children & Youth">Children & Youth</option>
+                <option value="Disability Support">Disability Support</option>
+                <option value="Food Distribution">Food Distribution</option>
+                <option value="Other">Other</option>
+            </select>
         </div>
 
         <div class="mb-3">
@@ -57,12 +75,22 @@
         </div>
 
         <div class="mb-3">
+            <label class="form-label">Hours Required</label>
+            <input type="number" class="form-control" id="hours_required" min="1" step="1" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Number of Volunteers Needed</label>
+            <input type="number" class="form-control" id="capacity" min="1" step="1" required>
+        </div>
+
+        <div class="mb-3">
             <label class="form-label">Location</label>
             <input type="text" class="form-control" id="location" required>
         </div>
 
-        <button type="button" class="btn btn-info" onclick="showPreview()">Preview</button>
-        <button type="button" class="btn btn-primary" onclick="submitOpportunity()">Submit</button>
+        <button type="button" id="previewBtn" class="btn btn-info" onclick="showPreview()">Preview</button>
+        <button type="button" id="submitBtn" class="btn btn-primary" onclick="submitOpportunity()">Submit</button>
     </form>
 </div>
 

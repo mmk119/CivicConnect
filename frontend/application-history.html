@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application History - CivicConnect</title>
+  <script src="notifications.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #f7fbff;
+      background: linear-gradient(135deg, #071a33 0%, #102b50 45%, #0d203c 100%);
+    }
+
+    .navbar {
+      height: 96px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 48px;
+      background: linear-gradient(90deg, #1087ee 0%, #ff6800 100%);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 2rem;
+      font-weight: 800;
+    }
+
+    .brand img {
+      width: 66px;
+      height: 66px;
+      border-radius: 12px;
+      background: #fff;
+      object-fit: contain;
+      padding: 5px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav-links a,
+    .nav-links button {
+      color: #fff;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .nav-links button {
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 10px;
+      padding: 12px 18px;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 48px));
+      margin: 44px auto;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: #43d6d8;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      line-height: 1.05;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      color: #cfd9e6;
+      font-size: 1.05rem;
+      max-width: 620px;
+      line-height: 1.6;
+    }
+
+    .summary-card {
+      min-width: 210px;
+      padding: 18px 20px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      text-align: center;
+    }
+
+    .summary-number {
+      display: block;
+      font-size: 2rem;
+      font-weight: 900;
+      color: #43d6d8;
+    }
+
+    .summary-label {
+      color: #cfd9e6;
+      font-weight: 700;
+    }
+
+    .status-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .filter-btn {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 10px 16px;
+      color: #dce8f7;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .filter-btn.active {
+      background: #1285f3;
+      border-color: #1285f3;
+      color: #fff;
+    }
+
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 22px;
+    }
+
+    .history-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #10253d;
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+    }
+
+    .history-card::before {
+      content: "";
+      height: 5px;
+      background: linear-gradient(90deg, #1285f3, #43d6d8);
+    }
+
+    .card-body {
+      flex: 1;
+      padding: 26px 26px 18px;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .field-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 11px;
+      border-radius: 8px;
+      background: #e7f4ff;
+      color: #0877da;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 900;
+      text-transform: capitalize;
+    }
+
+    .status-pending {
+      background: #fff3cd;
+      color: #946200;
+    }
+
+    .status-accepted {
+      background: #d9f5df;
+      color: #137b2c;
+    }
+
+    .status-rejected {
+      background: #ffe0e0;
+      color: #b42323;
+    }
+
+    .history-card h2 {
+      font-size: 1.35rem;
+      margin-bottom: 10px;
+      color: #08233c;
+    }
+
+    .description {
+      min-height: 48px;
+      color: #486179;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    .meta-list {
+      display: grid;
+      gap: 10px;
+      color: #486179;
+      font-weight: 600;
+    }
+
+    .meta-list i {
+      width: 18px;
+      color: #1285f3;
+      margin-right: 7px;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 12px;
+      padding: 18px 26px;
+      background: #f4f6f8;
+    }
+
+    .details-link {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      border: 1px solid #cdd8e3;
+      border-radius: 10px;
+      color: #08233c;
+      text-decoration: none;
+      font-weight: 800;
+      background: #fff;
+    }
+
+    .empty-state,
+    .error-state {
+      padding: 52px 24px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      text-align: center;
+      color: #dce8f7;
+    }
+
+    .empty-state i,
+    .error-state i {
+      display: block;
+      margin-bottom: 16px;
+      color: #43d6d8;
+      font-size: 2.6rem;
+    }
+
+    .loading {
+      padding: 46px;
+      text-align: center;
+      color: #dce8f7;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    @media (max-width: 760px) {
+      .navbar {
+        height: auto;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+        padding: 18px 22px;
+      }
+
+      .brand {
+        font-size: 1.55rem;
+      }
+
+      .nav-links {
+        width: 100%;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .hero {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .page {
+        width: min(100% - 28px, 1180px);
+        margin: 28px auto;
+      }
+
+      .card-actions {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="landingpage.html">
+      <img src="logo.png" alt="CivicConnect Logo">
+      CivicConnect
+    </a>
+    <div class="nav-links">
+      <a href="landingpage.html">Home</a>
+      <a href="opportunities.html">Opportunities</a>
+      <a href="profile.html">My Profile</a>
+      <button type="button" id="logout-btn">Log Out</button>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="eyebrow"><i class="fas fa-clock-rotate-left"></i> Volunteer dashboard</span>
+        <h1>Application History</h1>
+        <p>Track the opportunities you applied to, their current status, the date you applied, and the NGO behind each opportunity.</p>
+      </div>
+      <div class="summary-card">
+        <span class="summary-number" id="application-count">0</span>
+        <span class="summary-label">Applications</span>
+      </div>
+    </section>
+
+    <div class="status-filters" aria-label="Filter applications by status">
+      <button type="button" class="filter-btn active" data-filter="all">All</button>
+      <button type="button" class="filter-btn" data-filter="pending">Pending</button>
+      <button type="button" class="filter-btn" data-filter="accepted">Accepted</button>
+      <button type="button" class="filter-btn" data-filter="rejected">Rejected</button>
+    </div>
+
+    <section id="history-container" class="history-grid">
+      <div class="loading">Loading your applications...</div>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem("token");
+    let applications = [];
+    let activeFilter = "all";
+
+    function clearAuthStorage() {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("role");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("loggedInUser");
+    }
+
+    function getTokenPayload() {
+      if (!token) return null;
+      try {
+        return JSON.parse(atob(token.split(".")[1]));
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function requireVolunteer() {
+      const payload = getTokenPayload();
+      if (!payload || payload.role !== "Volunteer") {
+        clearAuthStorage();
+        window.location.href = "login.html";
+        return false;
+      }
+      return true;
+    }
+
+    function formatDate(value) {
+      if (!value) return "Not available";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Not available";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      });
+    }
+
+    function truncateText(value, length = 110) {
+      if (!value) return "No description provided.";
+      return value.length > length ? `${value.slice(0, length)}...` : value;
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function statusIcon(status) {
+      if (status === "accepted") return "fa-circle-check";
+      if (status === "rejected") return "fa-circle-xmark";
+      return "fa-hourglass-half";
+    }
+
+    function renderApplications() {
+      const container = document.getElementById("history-container");
+      const filtered = activeFilter === "all"
+        ? applications
+        : applications.filter(app => app.status === activeFilter);
+
+      document.getElementById("application-count").textContent = applications.length;
+
+      if (filtered.length === 0) {
+        const message = activeFilter === "all"
+          ? "You have not applied to any opportunities yet."
+          : `No ${activeFilter} applications found.`;
+        container.className = "empty-state";
+        container.innerHTML = `
+          <i class="fas fa-folder-open"></i>
+          <h2>No Applications</h2>
+          <p>${message}</p>
+        `;
+        return;
+      }
+
+      container.className = "history-grid";
+      container.innerHTML = filtered.map(app => {
+        const status = ["pending", "accepted", "rejected"].includes(app.status) ? app.status : "pending";
+        return `
+        <article class="history-card">
+          <div class="card-body">
+            <div class="card-top">
+              <span class="field-badge"><i class="fas fa-tag"></i>${escapeHTML(app.field || "General")}</span>
+              <span class="status-badge status-${status}">
+                <i class="fas ${statusIcon(status)}"></i>${status}
+              </span>
+            </div>
+            <h2>${escapeHTML(app.title)}</h2>
+            <p class="description">${escapeHTML(truncateText(app.description))}</p>
+            <div class="meta-list">
+              <span><i class="fas fa-building"></i>${escapeHTML(app.ngo_name || "Unknown NGO")}</span>
+              <span><i class="fas fa-calendar-plus"></i>Applied: ${formatDate(app.applied_at)}</span>
+              <span><i class="fas fa-calendar-days"></i>${formatDate(app.start_date)} - ${formatDate(app.end_date)}</span>
+              <span><i class="fas fa-location-dot"></i>${escapeHTML(app.location || "No location")}</span>
+              <span><i class="fas fa-clock"></i>${app.hours_required || 0} hours required</span>
+              <span><i class="fas fa-award"></i>${app.attendance_confirmed === "YES" ? `${app.hours_completed || 0} hours completed` : "Hours not confirmed yet"}</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <a class="details-link" href="detailedView.html?id=${app.opportunity_id}">
+              <i class="fas fa-arrow-up-right-from-square"></i> Details
+            </a>
+          </div>
+        </article>
+      `;
+      }).join("");
+    }
+
+    async function loadApplications() {
+      if (!requireVolunteer()) return;
+
+      try {
+        const response = await fetch("/api/volunteer/applications", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          clearAuthStorage();
+          window.location.href = "login.html";
+          return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to load application history.");
+        }
+
+        applications = Array.isArray(data) ? data : [];
+        renderApplications();
+      } catch (err) {
+        const container = document.getElementById("history-container");
+        container.className = "error-state";
+        container.innerHTML = `
+          <i class="fas fa-triangle-exclamation"></i>
+          <h2>Could not load applications</h2>
+          <p>${err.message}</p>
+        `;
+      }
+    }
+
+    document.querySelectorAll(".filter-btn").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+        activeFilter = button.dataset.filter;
+        renderApplications();
+      });
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      clearAuthStorage();
+      window.location.href = "login.html";
+    });
+
+    document.addEventListener("DOMContentLoaded", loadApplications);
+  </script>
+</body>
+</html>
