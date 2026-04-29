@@ -34,6 +34,8 @@ async function testConnection() {
     }
 }
 
-testConnection();
+if (process.env.NODE_ENV !== 'test') {
+    testConnection();
+}
 
 module.exports = pool;

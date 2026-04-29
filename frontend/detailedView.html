@@ -13,7 +13,7 @@
 
       background:
         linear-gradient(rgba(10,25,50,0.85), rgba(10,25,50,0.95)),
-        url('handinhand.jpeg') no-repeat center center fixed;
+        url('handinhand.png') no-repeat center center fixed;
 
       background-size: cover;
 
@@ -88,6 +88,28 @@
       transform: scale(1.05);
     }
 
+    .feedback-summary {
+      margin-top: 22px;
+      padding: 18px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .feedback-card {
+      padding: 14px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .feedback-card:first-of-type {
+      border-top: none;
+    }
+
+    .feedback-stars {
+      color: #ffb347;
+      font-weight: 900;
+    }
+
     .toast-message {
       position: fixed;
       right: 24px;
@@ -120,6 +142,7 @@
       background: #dc3545;
     }
   </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 
 <body>
@@ -151,6 +174,8 @@
       <h3>Date & Time Commitment</h3>
       <p id="opportunity-date"></p>
       <p id="opportunity-time"></p>
+      <p id="opportunity-days"></p>
+      <p id="opportunity-timing"></p>
       <p id="opportunity-hours"></p>
       <p id="opportunity-capacity"></p>
     </div>
@@ -163,6 +188,18 @@
     <a href="#" class="apply-button" id="applyButton" onclick="applyForOpportunity(event, oppId)">
       Apply Now
     </a>
+
+    <div class="section" id="applicationQuestionsBox" style="display:none;">
+      <h3>Application Questions</h3>
+      <div id="applicationQuestions"></div>
+    </div>
+
+    <div class="feedback-summary" id="feedbackSummary">
+      <div class="section">
+        <h3>Volunteer Feedback</h3>
+        <p>Loading reviews...</p>
+      </div>
+    </div>
 
   </div>
 
@@ -185,6 +222,17 @@
     }
     const params = new URLSearchParams(window.location.search);
     oppId = params.get('id');
+
+    const weekdayOrder = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+    function formatScheduleDays(days) {
+      const selected = Array.isArray(days) ? days : String(days || "").split(",");
+      return weekdayOrder.filter(day => selected.includes(day)).join(", ") || "Days TBD";
+    }
+
+    function formatTime(value) {
+      return value ? String(value).slice(0, 5) : "Time TBD";
+    }
 
     if (!oppId) {
       showToast("No opportunity was selected.", "error");
@@ -212,6 +260,10 @@
 
           document.getElementById('opportunity-time').textContent =
             `Ends: ${new Date(data.end_date).toLocaleDateString()}`;
+          document.getElementById('opportunity-days').textContent =
+            `Days: ${formatScheduleDays(data.schedule_days)}`;
+          document.getElementById('opportunity-timing').textContent =
+            `Timing: ${formatTime(data.start_time)} - ${formatTime(data.end_time)}`;
 
           document.getElementById('opportunity-hours').textContent =
             `Hours Required: ${data.hours_required || 0}`;
@@ -220,6 +272,7 @@
 
           document.getElementById('ngo-name').textContent = data.ngo_name;
           document.getElementById('ngo-link').href = `ngo-public.html?id=${data.ngo_id}`;
+          renderApplicationQuestions(parseQuestions(data.application_questions));
 
           const capacity = Number(data.capacity) || 0;
           const accepted = Number(data.accepted_count) || 0;
@@ -265,6 +318,104 @@
       return getTokenPayload()?.role === "Volunteer";
     }
 
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function parseQuestions(value) {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function renderApplicationQuestions(questions) {
+      const box = document.getElementById('applicationQuestionsBox');
+      const holder = document.getElementById('applicationQuestions');
+      if (!questions.length) {
+        box.style.display = 'none';
+        holder.innerHTML = '';
+        return;
+      }
+
+      box.style.display = '';
+      holder.innerHTML = questions.map((question, index) => `
+        <label style="display:block;margin:12px 0 6px;font-weight:700;" for="answer-${index}">
+          ${escapeHTML(question)}
+        </label>
+        <textarea id="answer-${index}" rows="3" maxlength="800"
+          style="width:100%;border-radius:10px;border:1px solid #d8e2ef;padding:10px;"></textarea>
+      `).join('');
+    }
+
+    function loadFeedback(id) {
+      fetch(`api/opportunities/${id}/feedback`)
+        .then(res => res.json())
+        .then(data => {
+          const box = document.getElementById("feedbackSummary");
+          if (!data.reviews || data.reviews.length === 0) {
+            box.innerHTML = `
+              <div class="section">
+                <h3>Volunteer Feedback</h3>
+                <p>No feedback has been shared yet. Completed volunteers can add the first review.</p>
+              </div>`;
+            return;
+          }
+
+          box.innerHTML = `
+            <div class="section">
+              <h3>Volunteer Feedback</h3>
+              <p><strong>${data.average_rating || "New"}/5</strong> average from ${data.total_reviews} review${data.total_reviews === 1 ? "" : "s"}</p>
+            </div>
+            ${data.reviews.map(review => `
+              <div class="feedback-card">
+                <div class="feedback-stars">${Number(review.rating) || 0}/5 rating</div>
+                <p>${escapeHTML(review.comment)}</p>
+                ${review.impact_story ? `<p><strong>Impact note:</strong> ${escapeHTML(review.impact_story)}</p>` : ""}
+                <small>By ${escapeHTML(review.volunteer_name || "Volunteer")}</small>
+                ${localStorage.getItem('token') ? `<br><button type="button" style="margin-top:8px;border:0;background:transparent;color:#b00020;font-weight:700;" onclick="reportFeedback(${review.opportunity_feedback_id})">Report</button>` : ""}
+              </div>
+            `).join("")}
+          `;
+        })
+        .catch(() => {
+          document.getElementById("feedbackSummary").innerHTML = `
+            <div class="section">
+              <h3>Volunteer Feedback</h3>
+              <p>Reviews could not be loaded right now.</p>
+            </div>`;
+        });
+    }
+
+    async function reportFeedback(feedbackId) {
+      const reason = prompt("Why should admin review this feedback? (harmful, abusive, unsafe, spam)");
+      if (!reason) return;
+      try {
+        const response = await fetch(`/api/feedback/opportunity/${feedbackId}/report`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ reason })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Could not report feedback.');
+        showToast(data.message || 'Report sent to admin.', 'success');
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+
     async function applyForOpportunity(event, opportunityId) {
       event.preventDefault();
 
@@ -288,13 +439,15 @@
       applyButton.textContent = 'Submitting...';
 
       try {
+        const questions = parseQuestions(currentOpportunity?.application_questions);
+        const application_answers = questions.map((_, index) => document.getElementById(`answer-${index}`)?.value.trim() || '');
         const response = await fetch('/api/applications', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
-          body: JSON.stringify({ opportunity_id: opportunityId })
+          body: JSON.stringify({ opportunity_id: opportunityId, application_answers })
         });
 
         if (!response.ok) {
@@ -309,6 +462,10 @@
         applyButton.style.pointerEvents = '';
         applyButton.textContent = 'Apply Now';
       }
+    }
+
+    if (oppId) {
+      loadFeedback(oppId);
     }
   </script>
 

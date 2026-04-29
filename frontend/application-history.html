@@ -138,6 +138,12 @@
       margin-bottom: 24px;
     }
 
+    .schedule-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin: -8px 0 22px;
+    }
+
     .filter-btn {
       border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 999px;
@@ -278,6 +284,70 @@
       background: #fff;
     }
 
+    .feedback-panel {
+      padding: 18px 26px 24px;
+      border-top: 1px solid #e1e8ef;
+      background: #fff;
+    }
+
+    .feedback-panel h3 {
+      margin-bottom: 10px;
+      color: #08233c;
+      font-size: 1rem;
+    }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .feedback-panel select,
+    .feedback-panel textarea,
+    .feedback-panel input {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid #cdd8e3;
+      border-radius: 10px;
+      font: inherit;
+    }
+
+    .feedback-panel textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+
+    .feedback-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      background: #1285f3;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .received-feedback {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 12px;
+      color: #12304c;
+      background: #eef8f8;
+      border: 1px solid #c9eeee;
+    }
+
+    .rating-line {
+      color: #ff8a00;
+      font-weight: 900;
+    }
+
     .empty-state,
     .error-state {
       padding: 52px 24px;
@@ -336,8 +406,13 @@
       .card-actions {
         padding: 16px;
       }
+
+      .feedback-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 <body>
   <nav class="navbar">
@@ -371,6 +446,12 @@
       <button type="button" class="filter-btn" data-filter="pending">Pending</button>
       <button type="button" class="filter-btn" data-filter="accepted">Accepted</button>
       <button type="button" class="filter-btn" data-filter="rejected">Rejected</button>
+    </div>
+
+    <div class="schedule-actions">
+      <button type="button" class="filter-btn" id="download-schedule-btn">
+        <i class="fas fa-calendar-arrow-down"></i> Download Accepted Schedule
+      </button>
     </div>
 
     <section id="history-container" class="history-grid">
@@ -421,6 +502,136 @@
       });
     }
 
+    const weekdayOrder = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+    function formatScheduleDays(days) {
+      const selected = Array.isArray(days) ? days : String(days || "").split(",");
+      return weekdayOrder.filter(day => selected.includes(day)).join(", ") || "Days TBD";
+    }
+
+    function formatTime(value) {
+      return value ? String(value).slice(0, 5) : "Time TBD";
+    }
+
+    function toMinutes(value) {
+      const [hours, minutes] = String(value || "").slice(0, 5).split(":").map(Number);
+      if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+      return hours * 60 + minutes;
+    }
+
+    function scheduleRows() {
+      const rows = [];
+      for (let hour = 7; hour <= 21; hour += 1) {
+        const display = hour === 12 ? "12:00" : hour > 12 ? `${hour - 12}:00` : `${hour}:00`;
+        rows.push({ hour, display });
+      }
+      return rows;
+    }
+
+    function buildScheduleHtml() {
+      const accepted = applications.filter(app => app.status === "accepted");
+      const days = [
+        ["MON", "Monday"],
+        ["TUE", "Tuesday"],
+        ["WED", "Wednesday"],
+        ["THU", "Thursday"],
+        ["FRI", "Friday"],
+        ["SAT", "Saturday"],
+        ["SUN", "Sunday"]
+      ];
+      const rows = scheduleRows();
+      const startDayMinutes = 7 * 60;
+      const rowHeight = 78;
+      const safeName = localStorage.getItem("userName") || "Volunteer";
+
+      const events = accepted.flatMap(app => {
+        const selectedDays = String(app.schedule_days || "").split(",").filter(Boolean);
+        const start = toMinutes(app.start_time);
+        const end = toMinutes(app.end_time);
+        if (start === null || end === null || end <= start) return [];
+        return selectedDays.map(day => ({
+          day,
+          top: Math.max(0, ((start - startDayMinutes) / 60) * rowHeight),
+          height: Math.max(48, ((end - start) / 60) * rowHeight - 8),
+          title: app.title,
+          location: app.location || "Location TBD",
+          ngo: app.ngo_name || "NGO",
+          time: `${formatTime(app.start_time)} - ${formatTime(app.end_time)}`
+        }));
+      });
+
+      const escape = escapeHTML;
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicConnect Accepted Schedule</title>
+  <style>
+    body { margin: 0; padding: 28px; font-family: Arial, sans-serif; color: #26323f; background: #fff; }
+    .header { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 22px; }
+    h1 { margin: 0 0 6px; font-size: 28px; color: #10253d; }
+    p { margin: 0; color: #61758a; }
+    .schedule { display: grid; grid-template-columns: 72px repeat(7, minmax(120px, 1fr)); border-top: 1px solid #dfe6ee; border-left: 1px solid #dfe6ee; overflow-x: auto; }
+    .day, .time, .cell { border-right: 1px solid #dfe6ee; border-bottom: 1px solid #dfe6ee; }
+    .day { height: 48px; display: grid; place-items: center; font-weight: 700; background: #fafbfc; }
+    .time { height: 78px; padding: 12px 10px; box-sizing: border-box; color: #3f4b57; background: #fff; }
+    .cell { height: 78px; position: relative; background: linear-gradient(#fff, #fff); }
+    .day-column { position: relative; grid-row: 2 / span ${rows.length}; min-height: ${rows.length * rowHeight}px; pointer-events: none; }
+    .event { position: absolute; left: 8px; right: 8px; padding: 10px; border-radius: 8px; background: #e8f4ff; border-left: 5px solid #1285f3; box-shadow: 0 8px 18px rgba(16, 37, 61, .12); overflow: hidden; }
+    .event strong { display: block; font-size: 14px; color: #10253d; margin-bottom: 4px; }
+    .event span { display: block; font-size: 12px; color: #4f6378; line-height: 1.35; }
+    .empty { padding: 26px; border: 1px dashed #b9c8d8; border-radius: 12px; color: #61758a; }
+    .print { border: 0; background: #1285f3; color: #fff; font-weight: 800; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+    @media print { body { padding: 12px; } .print { display: none; } .schedule { font-size: 11px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Accepted Volunteer Schedule</h1>
+      <p>${escape(safeName)} | Generated ${new Date().toLocaleDateString()}</p>
+    </div>
+    <button class="print" onclick="window.print()">Print / Save PDF</button>
+  </div>
+  ${accepted.length === 0 ? `<div class="empty">No accepted opportunities yet.</div>` : `
+  <div class="schedule">
+    <div class="day"></div>
+    ${days.map(([, label]) => `<div class="day">${label}</div>`).join("")}
+    ${rows.map(row => `
+      <div class="time">${row.display}</div>
+      ${days.map(() => `<div class="cell"></div>`).join("")}
+    `).join("")}
+    ${days.map(([code], index) => `
+      <div class="day-column" style="grid-column:${index + 2};">
+        ${events.filter(event => event.day === code).map(event => `
+          <div class="event" style="top:${event.top}px;height:${event.height}px;">
+            <strong>${escape(event.title)}</strong>
+            <span>${escape(event.time)}</span>
+            <span>${escape(event.location)}</span>
+            <span>${escape(event.ngo)}</span>
+          </div>
+        `).join("")}
+      </div>
+    `).join("")}
+  </div>`}
+</body>
+</html>`;
+    }
+
+    function downloadAcceptedSchedule() {
+      const html = buildScheduleHtml();
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `civicconnect-accepted-schedule-${new Date().toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     function truncateText(value, length = 110) {
       if (!value) return "No description provided.";
       return value.length > length ? `${value.slice(0, length)}...` : value;
@@ -439,6 +650,76 @@
       if (status === "accepted") return "fa-circle-check";
       if (status === "rejected") return "fa-circle-xmark";
       return "fa-hourglass-half";
+    }
+
+    function canLeaveOpportunityFeedback(app) {
+      return app.status === "accepted" && app.attendance_confirmed === "YES";
+    }
+
+    function feedbackSection(app) {
+      let ngoFeedback = "";
+      if (app.volunteer_feedback_id) {
+        ngoFeedback = `
+          <div class="received-feedback">
+            <strong>NGO endorsement: ${escapeHTML(app.volunteer_feedback_title || "Volunteer feedback")}</strong>
+            <div class="rating-line">${Number(app.volunteer_feedback_rating) || 0}/5 rating</div>
+            <p>${escapeHTML(app.volunteer_feedback_comment || "")}</p>
+            ${app.volunteer_feedback_strengths ? `<small><strong>Strengths:</strong> ${escapeHTML(app.volunteer_feedback_strengths)}</small>` : ""}
+          </div>
+        `;
+      }
+
+      if (!canLeaveOpportunityFeedback(app) && !ngoFeedback) return "";
+
+      const existing = Boolean(app.opportunity_feedback_id);
+      const form = canLeaveOpportunityFeedback(app) ? `
+        <div class="feedback-panel">
+          <h3>${existing ? "Update your opportunity feedback" : "Share your opportunity feedback"}</h3>
+          <div class="feedback-grid">
+            <select id="rating-${app.application_id}" aria-label="Rating">
+              ${[5, 4, 3, 2, 1].map(value => `
+                <option value="${value}" ${Number(app.opportunity_feedback_rating) === value ? "selected" : ""}>
+                  ${value} star${value === 1 ? "" : "s"}
+                </option>
+              `).join("")}
+            </select>
+            <input id="impact-${app.application_id}" type="text" maxlength="800"
+                   placeholder="Optional impact note, e.g. What changed because of this work?"
+                   value="${escapeHTML(app.opportunity_feedback_impact_story || "")}">
+          </div>
+          <textarea id="comment-${app.application_id}" maxlength="1200"
+                    placeholder="Tell future volunteers what the experience was like.">${escapeHTML(app.opportunity_feedback_comment || "")}</textarea>
+          <button class="feedback-button" type="button" onclick="saveOpportunityFeedback(${app.application_id})">
+            <i class="fas fa-paper-plane"></i> ${existing ? "Update Feedback" : "Submit Feedback"}
+          </button>
+          ${ngoFeedback}
+        </div>
+      ` : `<div class="feedback-panel">${ngoFeedback}</div>`;
+
+      return form;
+    }
+
+    async function saveOpportunityFeedback(applicationId) {
+      const rating = document.getElementById(`rating-${applicationId}`).value;
+      const comment = document.getElementById(`comment-${applicationId}`).value.trim();
+      const impact_story = document.getElementById(`impact-${applicationId}`).value.trim();
+
+      try {
+        const response = await fetch(`/api/feedback/opportunity/${applicationId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ rating, comment, impact_story })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not save feedback.");
+        alert(data.message || "Feedback saved.");
+        await loadApplications();
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
     function renderApplications() {
@@ -480,6 +761,8 @@
               <span><i class="fas fa-building"></i>${escapeHTML(app.ngo_name || "Unknown NGO")}</span>
               <span><i class="fas fa-calendar-plus"></i>Applied: ${formatDate(app.applied_at)}</span>
               <span><i class="fas fa-calendar-days"></i>${formatDate(app.start_date)} - ${formatDate(app.end_date)}</span>
+              <span><i class="fas fa-calendar-week"></i>${formatScheduleDays(app.schedule_days)}</span>
+              <span><i class="fas fa-business-time"></i>${formatTime(app.start_time)} - ${formatTime(app.end_time)}</span>
               <span><i class="fas fa-location-dot"></i>${escapeHTML(app.location || "No location")}</span>
               <span><i class="fas fa-clock"></i>${app.hours_required || 0} hours required</span>
               <span><i class="fas fa-award"></i>${app.attendance_confirmed === "YES" ? `${app.hours_completed || 0} hours completed` : "Hours not confirmed yet"}</span>
@@ -489,7 +772,12 @@
             <a class="details-link" href="detailedView.html?id=${app.opportunity_id}">
               <i class="fas fa-arrow-up-right-from-square"></i> Details
             </a>
+            ${app.attendance_confirmed === "YES" ? `
+              <button class="details-link" type="button" onclick="openCertificate(${app.application_id})">
+                <i class="fas fa-certificate"></i> Certificate
+              </button>` : ""}
           </div>
+          ${feedbackSection(app)}
         </article>
       `;
       }).join("");
@@ -527,6 +815,22 @@
       }
     }
 
+    async function openCertificate(applicationId) {
+      try {
+        const response = await fetch(`/api/certificates/${applicationId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const html = await response.text();
+        if (!response.ok) throw new Error(html || "Could not generate certificate.");
+        const blob = new Blob([html], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
     document.querySelectorAll(".filter-btn").forEach(button => {
       button.addEventListener("click", () => {
         document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
@@ -540,6 +844,8 @@
       clearAuthStorage();
       window.location.href = "login.html";
     });
+
+    document.getElementById("download-schedule-btn").addEventListener("click", downloadAcceptedSchedule);
 
     document.addEventListener("DOMContentLoaded", loadApplications);
   </script>

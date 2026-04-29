@@ -87,6 +87,73 @@ textarea.form-control {
     min-height: 100px;
 }
 
+.schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.day-picker {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(64px, 1fr));
+    gap: 10px;
+}
+
+.day-picker label {
+    cursor: pointer;
+}
+
+.day-picker input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.day-picker span {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 10px;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    font-weight: 800;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.day-picker input:checked + span {
+    background: linear-gradient(135deg, #ff7a18, #0dcaf0);
+    border-color: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+.day-picker label:hover span {
+    transform: translateY(-1px);
+}
+
+.schedule-summary {
+    padding: 16px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    background: rgba(13, 202, 240, 0.12);
+}
+
+.summary-label {
+    display: block;
+    margin-bottom: 4px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+#hoursPreview {
+    color: white;
+    font-size: 1.05rem;
+}
+
 /* ===== BUTTONS ===== */
 .btn-primary {
     background: #1e4fa3;
@@ -124,4 +191,11 @@ textarea.form-control {
     padding: 15px;
     margin-top: 40px;
     color: rgba(255,255,255,0.6);
+}
+
+@media (max-width: 760px) {
+    .schedule-grid,
+    .day-picker {
+        grid-template-columns: 1fr;
+    }
 }

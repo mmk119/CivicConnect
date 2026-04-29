@@ -1,8 +1,6 @@
 /* eslint-disable no-undef */
 require('dotenv').config();
 
-console.log("JWT Secret:", process.env.JWT_SECRET);
-
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const express = require('express');
@@ -15,6 +13,7 @@ const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const crypto = require('crypto');
 const util = require('util');
+const { createAuthenticateToken, requireAdmin } = require('./middleware/auth');
 const winston = require("winston");
 const logger = winston.createLogger({
     level: "info",
@@ -128,23 +127,7 @@ async function createTransporter() {
     }
 }
 
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-    if (!token) return res.sendStatus(401);
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-}
-
-function requireAdmin(req, res, next) {
-    if (req.user.role !== 'Admin') {
-        return res.status(403).json({ error: 'Admin privileges required.' });
-    }
-    next();
-}
+const authenticateToken = createAuthenticateToken(jwt, process.env.JWT_SECRET);
 
 async function writeAuditLog(adminId, action, targetType, targetId, details = '') {
     try {
@@ -162,6 +145,115 @@ function csvEscape(value) {
     if (value === null || value === undefined) return '';
     const text = String(value).replace(/"/g, '""');
     return /[",\n\r]/.test(text) ? `"${text}"` : text;
+}
+
+function cleanText(value, maxLength) {
+    return String(value || '').trim().slice(0, maxLength);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function parseRating(value) {
+    const rating = Number(value);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) return null;
+    return rating;
+}
+
+function normalizeList(value, maxItems = 12, maxLength = 80) {
+    const values = Array.isArray(value)
+        ? value
+        : String(value || '').split(',');
+    return values
+        .map(item => cleanText(item, maxLength))
+        .filter(Boolean)
+        .slice(0, maxItems);
+}
+
+function normalizeQuestions(value) {
+    const questions = Array.isArray(value)
+        ? value
+        : String(value || '').split(/\r?\n/);
+    return questions
+        .map(question => cleanText(question, 180))
+        .filter(Boolean)
+        .slice(0, 5);
+}
+
+function readJsonArray(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function normalizeApplicationAnswers(questions, answers) {
+    const questionList = readJsonArray(questions);
+    if (questionList.length === 0) return null;
+    const answerList = Array.isArray(answers) ? answers : [];
+
+    return JSON.stringify(questionList.map((question, index) => ({
+        question,
+        answer: cleanText(answerList[index], 800)
+    })));
+}
+
+function isOpportunityGoodMatch(opportunity, volunteer) {
+    if (!volunteer) return false;
+    const preferredFields = normalizeList(volunteer.preferred_fields).map(item => item.toLowerCase());
+    const preferredCities = normalizeList(volunteer.preferred_cities).map(item => item.toLowerCase());
+    const availableDays = normalizeList(volunteer.available_days).map(item => item.toUpperCase());
+    const opportunityDays = normalizeList(opportunity.schedule_days).map(item => item.toUpperCase());
+    const fieldMatch = preferredFields.length > 0 && preferredFields.includes(String(opportunity.field || '').toLowerCase());
+    const cityMatch = preferredCities.length > 0 && preferredCities.some(city => String(opportunity.location || '').toLowerCase().includes(city));
+    const dayMatch = availableDays.length > 0 && opportunityDays.some(day => availableDays.includes(day));
+    return [fieldMatch, cityMatch, dayMatch].filter(Boolean).length >= 2 || (fieldMatch && preferredCities.length === 0 && availableDays.length === 0);
+}
+
+const uploadRoot = path.join(__dirname, '../uploads');
+const generalUploadsDir = uploadRoot;
+const ngoLogosDir = path.join(uploadRoot, 'ngo-logos');
+const profilePicsDir = path.join(uploadRoot, 'profile-pictures');
+const allowedUploadTypes = new Map([
+    ['image/jpeg', '.jpg'],
+    ['image/png', '.png'],
+    ['image/webp', '.webp'],
+    ['application/pdf', '.pdf']
+]);
+const allowedImageTypes = new Map([
+    ['image/jpeg', '.jpg'],
+    ['image/png', '.png'],
+    ['image/webp', '.webp']
+]);
+
+function ensureDir(dir) {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function safeUploadName(file, allowedTypes) {
+    const ext = allowedTypes.get(file.mimetype);
+    return `${Date.now()}-${crypto.randomUUID()}${ext}`;
+}
+
+function fileFilterFor(allowedTypes) {
+    return (req, file, cb) => {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const expectedExt = allowedTypes.get(file.mimetype);
+        if (!expectedExt || (ext && ext !== expectedExt && !(expectedExt === '.jpg' && ext === '.jpeg'))) {
+            return cb(new Error('File type is not allowed.'), false);
+        }
+        cb(null, true);
+    };
 }
 
 // ===== AUTH ROUTES =====
@@ -413,12 +505,57 @@ const opportunityFields = [
     'Other'
 ];
 
+const scheduleDayCodes = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+function parseScheduleDays(value) {
+    const source = Array.isArray(value)
+        ? value
+        : String(value || '').split(',');
+    const days = [...new Set(source.map(day => String(day).trim().toUpperCase()).filter(Boolean))];
+    if (days.length === 0 || days.some(day => !scheduleDayCodes.includes(day))) return null;
+    return days;
+}
+
+function isValidTime(value) {
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''));
+}
+
+function dateFromInput(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return null;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function calculateScheduleHours(startDateValue, endDateValue, days, startTime, endTime) {
+    const startDate = dateFromInput(startDateValue);
+    const endDate = dateFromInput(endDateValue);
+    if (!startDate || !endDate || endDate < startDate) return null;
+
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    const minutesPerSession = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+    if (minutesPerSession <= 0) return null;
+
+    const jsDayToCode = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    let sessions = 0;
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+        if (days.includes(jsDayToCode[cursor.getDay()])) sessions += 1;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    if (sessions < 1) return null;
+    return Math.round((sessions * minutesPerSession / 60) * 100) / 100;
+}
+
 // FIX 2: /api/opportunities/search MUST be before /api/opportunities/:id
 app.get('/api/opportunities/search', async (req, res) => {
     const { location = '', keyword = '', field = '' } = req.query;
     try {
         const query = `
-            SELECT opportunity_id, title, field, description, start_date, end_date, location, ngo_id
+            SELECT opportunity_id, title, field, description, start_date, end_date,
+                   schedule_days, start_time, end_time, hours_required, location, ngo_id
             FROM Opportunities
             WHERE location LIKE ?
               AND (title LIKE ? OR description LIKE ?)
@@ -437,15 +574,21 @@ app.get('/api/opportunities/search', async (req, res) => {
 app.get('/api/opportunities/all', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     let volunteer_id = null;
+    let volunteerProfile = null;
 
     try {
         if (token && token !== "dev-mode") {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const [vol] = await db.execute(
-                'SELECT volunteer_id FROM volunteers WHERE user_id = ?',
+                `SELECT volunteer_id, available_days, available_start_time, available_end_time, preferred_fields, preferred_cities
+                 FROM Volunteers
+                 WHERE user_id = ?`,
                 [decoded.user_id]
             );
-            if (vol.length > 0) volunteer_id = vol[0].volunteer_id;
+            if (vol.length > 0) {
+                volunteer_id = vol[0].volunteer_id;
+                volunteerProfile = vol[0];
+            }
         }
 
         const [opportunities] = await db.execute(`
@@ -468,7 +611,10 @@ app.get('/api/opportunities/all', async (req, res) => {
             ORDER BY o.start_date ASC
         `, volunteer_id ? [volunteer_id, volunteer_id] : []);
 
-        res.json(opportunities);
+        res.json(opportunities.map(opportunity => ({
+            ...opportunity,
+            is_good_match: isOpportunityGoodMatch(opportunity, volunteerProfile) ? 1 : 0
+        })));
     } catch (err) {
         console.error("Error fetching opportunities:", err);
         res.status(500).json({ error: "Failed to fetch opportunities." });
@@ -489,7 +635,19 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
                        FROM Applications a
                        WHERE a.opportunity_id = o.opportunity_id
                          AND a.status = 'accepted'
-                   ) AS accepted_count
+                   ) AS accepted_count,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id
+                         AND a.status = 'pending'
+                   ) AS pending_count,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id
+                         AND a.status = 'rejected'
+                   ) AS rejected_count
             FROM Opportunities o
             WHERE o.ngo_id = ?
         `, [ngoId]);
@@ -505,12 +663,13 @@ app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
         return res.status(403).json({ error: "Only NGO accounts can create opportunities." });
     }
 
-    const { title, field, description, start_date, end_date, hours_required, capacity, location } = req.body;
+    const { title, field, description, start_date, end_date, schedule_days, start_time, end_time, capacity, location } = req.body;
     const ngo_id = req.user.ngo_id;
-    const hoursRequired = Number(hours_required);
     const volunteerCapacity = Number(capacity);
+    const selectedDays = parseScheduleDays(schedule_days);
+    const questions = normalizeQuestions(req.body.application_questions);
 
-    if (!title || !field || !description || !start_date || !end_date || !hours_required || !capacity || !location) {
+    if (!title || !field || !description || !start_date || !end_date || !capacity || !location || !selectedDays || !start_time || !end_time) {
         return res.status(400).json({ error: "All fields are required." });
     }
 
@@ -518,8 +677,13 @@ app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: "Invalid opportunity field." });
     }
 
-    if (!Number.isInteger(hoursRequired) || hoursRequired < 1) {
-        return res.status(400).json({ error: "Hours required must be a positive whole number." });
+    if (!isValidTime(start_time) || !isValidTime(end_time)) {
+        return res.status(400).json({ error: "Start and end time must be valid." });
+    }
+
+    const scheduleHours = calculateScheduleHours(start_date, end_date, selectedDays, start_time, end_time);
+    if (!scheduleHours || scheduleHours < 0.25) {
+        return res.status(400).json({ error: "Your selected days and timing must create at least one volunteering session." });
     }
 
     if (!Number.isInteger(volunteerCapacity) || volunteerCapacity < 1) {
@@ -542,13 +706,102 @@ app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
             });
         }
 
-        const query = `INSERT INTO Opportunities (title, field, description, start_date, end_date, hours_required, capacity, location, ngo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-        const [result] = await db.execute(query, [title, field, description, start_date, end_date, hoursRequired, volunteerCapacity, location, ngo_id]);
+        const query = `
+            INSERT INTO Opportunities
+                (title, field, description, start_date, end_date, schedule_days, start_time, end_time, hours_required, capacity, location, application_questions, ngo_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        const [result] = await db.execute(query, [
+            title,
+            field,
+            description,
+            start_date,
+            end_date,
+            selectedDays.join(','),
+            start_time,
+            end_time,
+            scheduleHours,
+            volunteerCapacity,
+            location,
+            questions.length ? JSON.stringify(questions) : null,
+            ngo_id
+        ]);
         console.log("Opportunity saved:", result.insertId);
         res.status(201).json({ message: "Opportunity submitted successfully!", id: result.insertId });
     } catch (err) {
         console.error("Error inserting opportunity:", err);
         res.status(500).json({ error: "Failed to submit opportunity." });
+    }
+});
+
+app.patch('/api/opportunities/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: "Only NGO accounts can update opportunities." });
+    }
+
+    const { title, field, description, start_date, end_date, schedule_days, start_time, end_time, capacity, location } = req.body;
+    const opportunityId = Number(req.params.id);
+    const volunteerCapacity = Number(capacity);
+    const selectedDays = parseScheduleDays(schedule_days);
+    const questions = normalizeQuestions(req.body.application_questions);
+
+    if (!Number.isInteger(opportunityId) || opportunityId < 1) {
+        return res.status(400).json({ error: "Valid opportunity ID is required." });
+    }
+
+    if (!title || !field || !description || !start_date || !end_date || !capacity || !location || !selectedDays || !start_time || !end_time) {
+        return res.status(400).json({ error: "All fields are required." });
+    }
+
+    if (!opportunityFields.includes(field)) {
+        return res.status(400).json({ error: "Invalid opportunity field." });
+    }
+
+    if (!isValidTime(start_time) || !isValidTime(end_time)) {
+        return res.status(400).json({ error: "Start and end time must be valid." });
+    }
+
+    const scheduleHours = calculateScheduleHours(start_date, end_date, selectedDays, start_time, end_time);
+    if (!scheduleHours || scheduleHours < 0.25) {
+        return res.status(400).json({ error: "Your selected days and timing must create at least one volunteering session." });
+    }
+
+    if (!Number.isInteger(volunteerCapacity) || volunteerCapacity < 1) {
+        return res.status(400).json({ error: "Volunteer capacity must be a positive whole number." });
+    }
+
+    try {
+        const [result] = await db.execute(`
+            UPDATE Opportunities
+            SET title = ?, field = ?, description = ?, start_date = ?, end_date = ?,
+                schedule_days = ?, start_time = ?, end_time = ?, hours_required = ?,
+                capacity = ?, location = ?, application_questions = ?
+            WHERE opportunity_id = ? AND ngo_id = ?
+        `, [
+            title,
+            field,
+            description,
+            start_date,
+            end_date,
+            selectedDays.join(','),
+            start_time,
+            end_time,
+            scheduleHours,
+            volunteerCapacity,
+            location,
+            questions.length ? JSON.stringify(questions) : null,
+            opportunityId,
+            req.user.ngo_id
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Opportunity not found." });
+        }
+
+        res.json({ message: "Opportunity updated successfully.", id: opportunityId });
+    } catch (err) {
+        console.error("Error updating opportunity:", err);
+        res.status(500).json({ error: "Failed to update opportunity." });
     }
 });
 
@@ -601,6 +854,43 @@ app.get('/api/opportunities/:id', async (req, res) => {
     }
 });
 
+app.get('/api/opportunities/:id/feedback', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [[summary]] = await db.execute(`
+            SELECT
+                COUNT(*) AS total_reviews,
+                ROUND(AVG(rating), 1) AS average_rating
+            FROM OpportunityFeedback
+            WHERE opportunity_id = ?
+        `, [id]);
+
+        const [reviews] = await db.execute(`
+            SELECT
+                ofb.opportunity_feedback_id,
+                ofb.rating,
+                ofb.comment,
+                ofb.impact_story,
+                ofb.created_at,
+                u.name AS volunteer_name
+            FROM OpportunityFeedback ofb
+            JOIN Volunteers v ON ofb.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            WHERE ofb.opportunity_id = ?
+            ORDER BY ofb.created_at DESC
+        `, [id]);
+
+        res.json({
+            total_reviews: Number(summary.total_reviews) || 0,
+            average_rating: summary.average_rating || null,
+            reviews
+        });
+    } catch (err) {
+        console.error('Error fetching opportunity feedback:', err);
+        res.status(500).json({ error: 'Failed to fetch opportunity feedback.' });
+    }
+});
+
 // ===== APPLICATIONS =====
 
 app.get('/api/ngo-public/:ngo_id', async (req, res) => {
@@ -632,7 +922,8 @@ app.get('/api/ngo-public/:ngo_id', async (req, res) => {
         }
 
         const [opportunities] = await db.execute(`
-            SELECT opportunity_id, title, field, description, location, start_date, end_date, hours_required, capacity
+            SELECT opportunity_id, title, field, description, location, start_date, end_date,
+                   schedule_days, start_time, end_time, hours_required, capacity
             FROM Opportunities
             WHERE ngo_id = ?
             ORDER BY start_date DESC
@@ -656,7 +947,7 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 
     try {
         const [opportunity] = await db.execute(
-            `SELECT opportunity_id, title, end_date, capacity,
+            `SELECT opportunity_id, title, end_date, capacity, application_questions,
                     (
                         SELECT COUNT(*)
                         FROM Applications
@@ -703,13 +994,18 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
             return res.status(409).json({ success: false, error: "You've already applied to this opportunity" });
         }
 
+        const applicationAnswers = normalizeApplicationAnswers(
+            opportunity[0].application_questions,
+            req.body.application_answers
+        );
+
         const connection = await db.getConnection();
         await connection.beginTransaction();
 
         try {
             const [result] = await connection.execute(
-                `INSERT INTO Applications (volunteer_id, opportunity_id, status) VALUES (?, ?, 'pending')`,
-                [volunteer_id, opportunity_id]
+                `INSERT INTO Applications (volunteer_id, opportunity_id, status, application_answers) VALUES (?, ?, 'pending', ?)`,
+                [volunteer_id, opportunity_id, applicationAnswers]
             );
 
             const [user] = await connection.execute(
@@ -910,12 +1206,6 @@ app.patch('/api/applications/:application_id/attendance', authenticateToken, asy
             return res.status(409).json({ error: 'Attendance has already been confirmed for this application.' });
         }
 
-        const endDate = new Date(application.end_date);
-        endDate.setHours(23, 59, 59, 999);
-        if (endDate >= new Date()) {
-            return res.status(400).json({ error: 'Attendance can only be confirmed after the opportunity has ended.' });
-        }
-
         const maxHours = Number(application.hours_required) || requestedHours;
         if (requestedHours > maxHours) {
             return res.status(400).json({ error: `Completed hours cannot be more than ${maxHours}.` });
@@ -925,7 +1215,8 @@ app.patch('/api/applications/:application_id/attendance', authenticateToken, asy
             UPDATE Applications
             SET attendance_confirmed = 'YES',
                 hours_completed = ?,
-                attendance_confirmed_at = NOW()
+                attendance_confirmed_at = NOW(),
+                certificate_id = COALESCE(certificate_id, UUID())
             WHERE application_id = ?
         `, [requestedHours, application_id]);
 
@@ -964,13 +1255,27 @@ app.get('/api/volunteer/applications', authenticateToken, async (req, res) => {
                 o.start_date,
                 o.end_date,
                 o.hours_required,
+                o.schedule_days,
+                o.start_time,
+                o.end_time,
                 a.hours_completed,
                 a.attendance_confirmed,
                 a.attendance_confirmed_at,
-                n.name AS ngo_name
+                n.name AS ngo_name,
+                ofb.opportunity_feedback_id,
+                ofb.rating AS opportunity_feedback_rating,
+                ofb.comment AS opportunity_feedback_comment,
+                ofb.impact_story AS opportunity_feedback_impact_story,
+                vfb.volunteer_feedback_id,
+                vfb.rating AS volunteer_feedback_rating,
+                vfb.endorsement_title AS volunteer_feedback_title,
+                vfb.comment AS volunteer_feedback_comment,
+                vfb.strengths AS volunteer_feedback_strengths
             FROM Applications a
             JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
             JOIN NGOs n ON o.ngo_id = n.ngo_id
+            LEFT JOIN OpportunityFeedback ofb ON a.application_id = ofb.application_id
+            LEFT JOIN VolunteerFeedback vfb ON a.application_id = vfb.application_id
             WHERE a.volunteer_id = ?
             ORDER BY a.applied_at DESC
         `, [volunteers[0].volunteer_id]);
@@ -988,16 +1293,20 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
     }
 
     const ngo_id = req.user.ngo_id;
+    const opportunityId = Number(req.query.opportunity_id);
+
+    if (!Number.isInteger(opportunityId) || opportunityId < 1) {
+        return res.status(400).json({ error: 'A valid opportunity_id is required.' });
+    }
 
     try {
         const [opps] = await db.execute(
-            `SELECT opportunity_id FROM Opportunities WHERE ngo_id = ?`, [ngo_id]
+            `SELECT opportunity_id FROM Opportunities WHERE ngo_id = ? AND opportunity_id = ?`,
+            [ngo_id, opportunityId]
         );
         if (opps.length === 0) {
-            return res.json([]);
+            return res.status(404).json({ error: 'Opportunity not found for this NGO.' });
         }
-        const ids = opps.map(o => o.opportunity_id);
-        const placeholders = ids.map(_ => '?').join(',');
 
         const [applicants] = await db.execute(`
             SELECT
@@ -1008,12 +1317,21 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
                 v.city,
                 v.skills,
                 a.status,
+                a.application_answers,
                 a.hours_completed,
                 a.attendance_confirmed,
                 a.attendance_confirmed_at,
+                vfb.volunteer_feedback_id,
+                vfb.rating AS volunteer_feedback_rating,
+                vfb.endorsement_title AS volunteer_feedback_title,
+                vfb.comment AS volunteer_feedback_comment,
+                vfb.strengths AS volunteer_feedback_strengths,
                 o.title AS opportunity_name,
                 o.end_date,
                 o.hours_required,
+                o.schedule_days,
+                o.start_time,
+                o.end_time,
                 COALESCE((
                     SELECT SUM(a2.hours_completed)
                     FROM Applications a2
@@ -1031,8 +1349,10 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
             JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
-            WHERE a.opportunity_id IN (${placeholders})
-        `, ids);
+            LEFT JOIN VolunteerFeedback vfb ON a.application_id = vfb.application_id
+            WHERE a.opportunity_id = ?
+            ORDER BY a.applied_at DESC
+        `, [opportunityId]);
 
         res.json(applicants);
     } catch (err) {
@@ -1041,13 +1361,157 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/feedback/opportunity/:application_id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).json({ error: 'Only volunteers can review opportunities.' });
+    }
+
+    const rating = parseRating(req.body.rating);
+    const comment = cleanText(req.body.comment, 1200);
+    const impactStory = cleanText(req.body.impact_story, 800);
+
+    if (!rating || comment.length < 10) {
+        return res.status(400).json({ error: 'Please add a 1-5 rating and at least 10 characters of feedback.' });
+    }
+
+    try {
+        const [rows] = await db.execute(`
+            SELECT a.application_id, a.volunteer_id, a.opportunity_id, a.status, a.attendance_confirmed
+            FROM Applications a
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            WHERE a.application_id = ? AND v.user_id = ?
+        `, [req.params.application_id, req.user.user_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Completed application not found.' });
+        }
+
+        const application = rows[0];
+        if (application.status !== 'accepted' || application.attendance_confirmed !== 'YES') {
+            return res.status(400).json({ error: 'Feedback opens after the NGO confirms your attendance.' });
+        }
+
+        await db.execute(`
+            INSERT INTO OpportunityFeedback (application_id, volunteer_id, opportunity_id, rating, comment, impact_story)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                rating = VALUES(rating),
+                comment = VALUES(comment),
+                impact_story = VALUES(impact_story),
+                updated_at = CURRENT_TIMESTAMP
+        `, [application.application_id, application.volunteer_id, application.opportunity_id, rating, comment, impactStory || null]);
+
+        res.json({ message: 'Your opportunity feedback was saved.' });
+    } catch (err) {
+        console.error('Error saving opportunity feedback:', err);
+        res.status(500).json({ error: 'Failed to save opportunity feedback.' });
+    }
+});
+
+app.post('/api/feedback/volunteer/:application_id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: 'Only NGO accounts can endorse volunteers.' });
+    }
+
+    const rating = parseRating(req.body.rating);
+    const title = cleanText(req.body.endorsement_title, 120);
+    const comment = cleanText(req.body.comment, 1200);
+    const strengths = cleanText(req.body.strengths, 800);
+
+    if (!rating || title.length < 3 || comment.length < 10) {
+        return res.status(400).json({ error: 'Please add a rating, short endorsement title, and meaningful feedback.' });
+    }
+
+    try {
+        const [rows] = await db.execute(`
+            SELECT a.application_id, a.volunteer_id, a.status, a.attendance_confirmed, o.ngo_id
+            FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            WHERE a.application_id = ? AND o.ngo_id = ?
+        `, [req.params.application_id, req.user.ngo_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Completed application not found for this NGO.' });
+        }
+
+        const application = rows[0];
+        if (application.status !== 'accepted' || application.attendance_confirmed !== 'YES') {
+            return res.status(400).json({ error: 'Volunteer feedback opens after attendance is confirmed.' });
+        }
+
+        await db.execute(`
+            INSERT INTO VolunteerFeedback (application_id, ngo_id, volunteer_id, rating, endorsement_title, comment, strengths)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                rating = VALUES(rating),
+                endorsement_title = VALUES(endorsement_title),
+                comment = VALUES(comment),
+                strengths = VALUES(strengths),
+                updated_at = CURRENT_TIMESTAMP
+        `, [application.application_id, req.user.ngo_id, application.volunteer_id, rating, title, comment, strengths || null]);
+
+        res.json({ message: 'Volunteer feedback was saved.' });
+    } catch (err) {
+        console.error('Error saving volunteer feedback:', err);
+        res.status(500).json({ error: 'Failed to save volunteer feedback.' });
+    }
+});
+
+app.post('/api/feedback/:type/:id/report', authenticateToken, async (req, res) => {
+    const { type, id } = req.params;
+    const config = {
+        opportunity: { table: 'OpportunityFeedback', column: 'opportunity_feedback_id' },
+        volunteer: { table: 'VolunteerFeedback', column: 'volunteer_feedback_id' }
+    };
+
+    if (!config[type]) {
+        return res.status(400).json({ error: 'Invalid feedback type.' });
+    }
+
+    const reason = cleanText(req.body.reason, 255);
+    const details = cleanText(req.body.details, 1000);
+    if (reason.length < 3) {
+        return res.status(400).json({ error: 'Please choose a report reason.' });
+    }
+
+    try {
+        const item = config[type];
+        const [rows] = await db.execute(
+            `SELECT ${item.column} FROM ${item.table} WHERE ${item.column} = ?`,
+            [id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Feedback not found.' });
+        }
+
+        await db.execute(`
+            INSERT INTO FeedbackReports (feedback_type, feedback_id, reporter_user_id, reason, details)
+            VALUES (?, ?, ?, ?, ?)
+        `, [type, id, req.user.user_id, reason, details || null]);
+
+        res.status(201).json({ message: 'Report submitted for admin review.' });
+    } catch (err) {
+        console.error('Feedback report error:', err);
+        res.status(500).json({ error: 'Failed to report feedback.' });
+    }
+});
+
 // ===== FILE UPLOAD =====
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => { cb(null, '../uploads/'); },
-    filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }
+    destination: (req, file, cb) => {
+        ensureDir(generalUploadsDir);
+        cb(null, generalUploadsDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, safeUploadName(file, allowedUploadTypes));
+    }
 });
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage,
+    fileFilter: fileFilterFor(allowedUploadTypes),
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 app.post('/api/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded." });
@@ -1055,15 +1519,18 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 app.get('/api/files', (req, res) => {
-    fs.readdir('../uploads/', (err, files) => {
+    fs.readdir(generalUploadsDir, (err, files) => {
         if (err) return res.status(500).json({ error: "Failed to retrieve files." });
         res.json(files);
     });
 });
 
 app.delete('/api/files/:filename', (req, res) => {
-    const { filename } = req.params;
-    const filePath = `uploads/${filename}`;
+    const filename = path.basename(req.params.filename);
+    const filePath = path.join(generalUploadsDir, filename);
+    if (!filePath.startsWith(generalUploadsDir)) {
+        return res.status(400).json({ error: "Invalid filename." });
+    }
     if (fs.existsSync(filePath)) {
         fs.unlink(filePath, (err) => {
             if (err) return res.status(500).json({ error: "Failed to delete file." });
@@ -1382,7 +1849,10 @@ app.get('/api/admin/opportunities', authenticateToken, requireAdmin, async (req,
               AND (? = '' OR (? = 'upcoming' AND o.end_date >= CURDATE()) OR (? = 'passed' AND o.end_date < CURDATE()))
             ORDER BY o.created_at DESC
         `, [search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, field, field, status, status, status]);
-        res.json(opportunities);
+        res.json(opportunities.map(opportunity => ({
+            ...opportunity,
+            is_good_match: isOpportunityGoodMatch(opportunity, volunteerProfile) ? 1 : 0
+        })));
     } catch (err) {
         console.error('Admin opportunities error:', err);
         res.status(500).json({ error: 'Failed to fetch opportunities.' });
@@ -1411,6 +1881,7 @@ app.get('/api/admin/applications', authenticateToken, requireAdmin, async (req, 
             SELECT a.application_id, a.status, a.applied_at, a.attendance_confirmed,
                    a.hours_completed, a.attendance_confirmed_at,
                    o.title AS opportunity_title, o.field, o.hours_required,
+                   o.schedule_days, o.start_time, o.end_time,
                    n.name AS ngo_name,
                    u.name AS volunteer_name, u.email AS volunteer_email
             FROM Applications a
@@ -1445,6 +1916,159 @@ app.get('/api/admin/audit-logs', authenticateToken, requireAdmin, async (req, re
     }
 });
 
+app.get('/api/admin/feedback', authenticateToken, requireAdmin, async (req, res) => {
+    const { type = '', search = '' } = req.query;
+    const searchTerm = `%${search}%`;
+
+    try {
+        const [opportunityFeedback] = await db.execute(`
+            SELECT
+                'opportunity' AS feedback_type,
+                ofb.opportunity_feedback_id AS feedback_id,
+                ofb.rating,
+                NULL AS title,
+                ofb.comment,
+                ofb.impact_story AS extra_note,
+                ofb.review_status,
+                ofb.reviewed_at,
+                ofb.created_at,
+                COALESCE(fr.open_reports, 0) AS open_reports,
+                u.name AS author_name,
+                u.email AS author_email,
+                o.title AS opportunity_title,
+                n.name AS ngo_name,
+                NULL AS volunteer_name
+            FROM OpportunityFeedback ofb
+            JOIN Volunteers v ON ofb.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            JOIN Opportunities o ON ofb.opportunity_id = o.opportunity_id
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
+            LEFT JOIN (
+                SELECT feedback_id, COUNT(*) AS open_reports
+                FROM FeedbackReports
+                WHERE feedback_type = 'opportunity' AND status = 'open'
+                GROUP BY feedback_id
+            ) fr ON fr.feedback_id = ofb.opportunity_feedback_id
+            WHERE (? IN ('', 'opportunity'))
+              AND (? = '' OR u.name LIKE ? OR u.email LIKE ? OR o.title LIKE ? OR n.name LIKE ? OR ofb.comment LIKE ?)
+            ORDER BY COALESCE(fr.open_reports, 0) DESC, ofb.rating ASC, ofb.created_at DESC
+        `, [type, search, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]);
+
+        const [volunteerFeedback] = await db.execute(`
+            SELECT
+                'volunteer' AS feedback_type,
+                vfb.volunteer_feedback_id AS feedback_id,
+                vfb.rating,
+                vfb.endorsement_title AS title,
+                vfb.comment,
+                vfb.strengths AS extra_note,
+                vfb.review_status,
+                vfb.reviewed_at,
+                vfb.created_at,
+                COALESCE(fr.open_reports, 0) AS open_reports,
+                n.name AS author_name,
+                u_ngo.email AS author_email,
+                o.title AS opportunity_title,
+                n.name AS ngo_name,
+                u_vol.name AS volunteer_name
+            FROM VolunteerFeedback vfb
+            JOIN NGOs n ON vfb.ngo_id = n.ngo_id
+            JOIN Users u_ngo ON n.user_id = u_ngo.user_id
+            JOIN Volunteers v ON vfb.volunteer_id = v.volunteer_id
+            JOIN Users u_vol ON v.user_id = u_vol.user_id
+            JOIN Applications a ON vfb.application_id = a.application_id
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            LEFT JOIN (
+                SELECT feedback_id, COUNT(*) AS open_reports
+                FROM FeedbackReports
+                WHERE feedback_type = 'volunteer' AND status = 'open'
+                GROUP BY feedback_id
+            ) fr ON fr.feedback_id = vfb.volunteer_feedback_id
+            WHERE (? IN ('', 'volunteer'))
+              AND (? = '' OR n.name LIKE ? OR u_ngo.email LIKE ? OR u_vol.name LIKE ? OR o.title LIKE ? OR vfb.comment LIKE ?)
+            ORDER BY COALESCE(fr.open_reports, 0) DESC, vfb.rating ASC, vfb.created_at DESC
+        `, [type, search, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]);
+
+        res.json([...opportunityFeedback, ...volunteerFeedback]
+            .sort((a, b) => (Number(b.open_reports) - Number(a.open_reports)) || (Number(a.rating) - Number(b.rating)) || (new Date(b.created_at) - new Date(a.created_at))));
+    } catch (err) {
+        console.error('Admin feedback error:', err);
+        res.status(500).json({ error: 'Failed to fetch feedback.' });
+    }
+});
+
+app.patch('/api/admin/feedback/:type/:id/review', authenticateToken, requireAdmin, async (req, res) => {
+    const { type, id } = req.params;
+    const config = {
+        opportunity: { table: 'OpportunityFeedback', column: 'opportunity_feedback_id', target: 'OpportunityFeedback' },
+        volunteer: { table: 'VolunteerFeedback', column: 'volunteer_feedback_id', target: 'VolunteerFeedback' }
+    };
+
+    if (!config[type]) {
+        return res.status(400).json({ error: 'Invalid feedback type.' });
+    }
+
+    try {
+        const item = config[type];
+        const [result] = await db.execute(
+            `UPDATE ${item.table} SET review_status = 'reviewed', reviewed_at = NOW() WHERE ${item.column} = ?`,
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Feedback not found.' });
+        }
+
+        await db.execute(
+            `UPDATE FeedbackReports SET status = 'reviewed', reviewed_at = NOW() WHERE feedback_type = ? AND feedback_id = ? AND status = 'open'`,
+            [type, id]
+        );
+        await writeAuditLog(req.user.user_id, 'review_feedback', item.target, id, `Admin marked ${type} feedback as reviewed.`);
+        res.json({ message: 'Feedback marked as reviewed.' });
+    } catch (err) {
+        console.error('Admin review feedback error:', err);
+        res.status(500).json({ error: 'Failed to review feedback.' });
+    }
+});
+
+app.delete('/api/admin/feedback/:type/:id', authenticateToken, requireAdmin, async (req, res) => {
+    const { type, id } = req.params;
+    const config = {
+        opportunity: {
+            table: 'OpportunityFeedback',
+            column: 'opportunity_feedback_id',
+            target: 'OpportunityFeedback'
+        },
+        volunteer: {
+            table: 'VolunteerFeedback',
+            column: 'volunteer_feedback_id',
+            target: 'VolunteerFeedback'
+        }
+    };
+
+    if (!config[type]) {
+        return res.status(400).json({ error: 'Invalid feedback type.' });
+    }
+
+    try {
+        const item = config[type];
+        const [result] = await db.execute(
+            `DELETE FROM ${item.table} WHERE ${item.column} = ?`,
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Feedback not found.' });
+        }
+
+        await writeAuditLog(req.user.user_id, 'delete_feedback', item.target, id, `Admin deleted ${type} feedback after moderation review.`);
+        res.json({ message: 'Feedback deleted successfully.' });
+    } catch (err) {
+        console.error('Admin delete feedback error:', err);
+        res.status(500).json({ error: 'Failed to delete feedback.' });
+    }
+});
+
 app.get('/api/admin/export/:type', authenticateToken, requireAdmin, async (req, res) => {
     const { type } = req.params;
     const exports = {
@@ -1458,7 +2082,7 @@ app.get('/api/admin/export/:type', authenticateToken, requireAdmin, async (req, 
         },
         opportunities: {
             filename: 'opportunities.csv',
-            query: `SELECT o.opportunity_id, o.title, o.field, o.location, o.start_date, o.end_date, o.hours_required, n.name AS ngo_name, o.created_at FROM Opportunities o JOIN NGOs n ON o.ngo_id = n.ngo_id ORDER BY o.created_at DESC`
+            query: `SELECT o.opportunity_id, o.title, o.field, o.location, o.start_date, o.end_date, o.schedule_days, o.start_time, o.end_time, o.hours_required, n.name AS ngo_name, o.created_at FROM Opportunities o JOIN NGOs n ON o.ngo_id = n.ngo_id ORDER BY o.created_at DESC`
         },
         applications: {
             filename: 'applications.csv',
@@ -1549,9 +2173,24 @@ app.post('/api/update-ngo-profile', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/upload-ngo-logo', authenticateToken, upload.single('ngoLogo'), async (req, res) => {
+const ngoLogoStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        ensureDir(ngoLogosDir);
+        cb(null, ngoLogosDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, safeUploadName(file, allowedImageTypes));
+    }
+});
+const uploadNgoLogo = multer({
+    storage: ngoLogoStorage,
+    fileFilter: fileFilterFor(allowedImageTypes),
+    limits: { fileSize: 3 * 1024 * 1024 }
+});
+
+app.post('/api/upload-ngo-logo', authenticateToken, uploadNgoLogo.single('ngoLogo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-    const logoUrl = `/uploads/${req.file.filename}`;
+    const logoUrl = `/uploads/ngo-logos/${req.file.filename}`;
     try {
         await db.execute(`UPDATE NGOs SET logo = ? WHERE ngo_id = ?`, [logoUrl, req.user.ngo_id]);
         res.json({ success: true, logo: logoUrl });
@@ -1571,6 +2210,8 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
                 u.user_id, u.name, u.email,
                 v.volunteer_id, v.phone, v.city, v.skills, v.interests, 
                 v.image_url, v.Date_of_Birth, v.experiences,
+                v.available_days, v.available_start_time, v.available_end_time,
+                v.preferred_fields, v.preferred_cities,
                 COALESCE((
                     SELECT SUM(a.hours_completed)
                     FROM Applications a
@@ -1592,6 +2233,11 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
             city: d.city || 'Not provided',
             skills: d.skills ? d.skills.split(',').map(s => s.trim()) : [],
             experiences: d.experiences ? d.experiences.split(',').map(e => e.trim()) : [],
+            availableDays: d.available_days ? d.available_days.split(',').map(s => s.trim()) : [],
+            availableStartTime: d.available_start_time ? String(d.available_start_time).slice(0, 5) : '',
+            availableEndTime: d.available_end_time ? String(d.available_end_time).slice(0, 5) : '',
+            preferredFields: d.preferred_fields ? d.preferred_fields.split(',').map(s => s.trim()) : [],
+            preferredCities: d.preferred_cities ? d.preferred_cities.split(',').map(s => s.trim()) : [],
             imageUrl: d.image_url || 'default-profile.jpg',
             dateOfBirth: d.Date_of_Birth ? new Date(d.Date_of_Birth).toLocaleDateString() : 'Not provided',
             totalHours: Number(d.total_hours) || 0
@@ -1606,6 +2252,11 @@ app.post('/api/update-profile', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.user_id;
         const { name, email, phone, skills, experiences } = req.body;
+        const availableDays = normalizeList(req.body.availableDays).map(day => day.toUpperCase()).filter(day => ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(day));
+        const preferredFields = normalizeList(req.body.preferredFields);
+        const preferredCities = normalizeList(req.body.preferredCities);
+        const availableStartTime = isValidTime(req.body.availableStartTime) ? req.body.availableStartTime : null;
+        const availableEndTime = isValidTime(req.body.availableEndTime) ? req.body.availableEndTime : null;
         if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
 
         const connection = await db.getConnection();
@@ -1613,8 +2264,22 @@ app.post('/api/update-profile', authenticateToken, async (req, res) => {
         try {
             await connection.execute('UPDATE Users SET name = ?, email = ? WHERE user_id = ?', [name, email, userId]);
             await connection.execute(
-                `UPDATE Volunteers SET phone = ?, skills = ?, experiences = ? WHERE user_id = ?`,
-                [phone || null, skills ? skills.join(', ') : null, experiences ? experiences.join(', ') : null, userId]
+                `UPDATE Volunteers
+                 SET phone = ?, skills = ?, experiences = ?,
+                     available_days = ?, available_start_time = ?, available_end_time = ?,
+                     preferred_fields = ?, preferred_cities = ?
+                 WHERE user_id = ?`,
+                [
+                    phone || null,
+                    skills ? skills.join(', ') : null,
+                    experiences ? experiences.join(', ') : null,
+                    availableDays.length ? availableDays.join(',') : null,
+                    availableStartTime,
+                    availableEndTime,
+                    preferredFields.length ? preferredFields.join(', ') : null,
+                    preferredCities.length ? preferredCities.join(', ') : null,
+                    userId
+                ]
             );
             await connection.commit();
             connection.release();
@@ -1630,24 +2295,20 @@ app.post('/api/update-profile', authenticateToken, async (req, res) => {
     }
 });
 
-const profilePicsDir = path.join(__dirname, '../uploads/profile-pictures');
 const profilePicStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        if (!fs.existsSync(profilePicsDir)) fs.mkdirSync(profilePicsDir, { recursive: true });
+        ensureDir(profilePicsDir);
         cb(null, profilePicsDir);
     },
     filename: (req, file, cb) => {
         const userId = req.user.user_id;
-        const ext = path.extname(file.originalname);
+        const ext = allowedImageTypes.get(file.mimetype);
         cb(null, `profile-${userId}${ext}`);
     }
 });
 const uploadProfilePic = multer({
     storage: profilePicStorage,
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) cb(null, true);
-        else cb(new Error('Only image files are allowed!'), false);
-    },
+    fileFilter: fileFilterFor(allowedImageTypes),
     limits: { fileSize: 5 * 1024 * 1024 }
 });
 
@@ -1666,6 +2327,129 @@ app.post('/api/upload-profile-picture', authenticateToken, uploadProfilePic.sing
     }
 });
 
+app.get('/api/certificates/:application_id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).send('Only volunteers can view certificates.');
+    }
+
+    try {
+        const [rows] = await db.execute(`
+            SELECT
+                a.application_id,
+                a.certificate_id,
+                a.hours_completed,
+                a.attendance_confirmed_at,
+                u.name AS volunteer_name,
+                o.title AS opportunity_title,
+                o.start_date,
+                o.end_date,
+                n.name AS ngo_name
+            FROM Applications a
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
+            WHERE a.application_id = ?
+              AND v.user_id = ?
+              AND a.status = 'accepted'
+              AND a.attendance_confirmed = 'YES'
+        `, [req.params.application_id, req.user.user_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).send('Certificate not found.');
+        }
+
+        const certificate = rows[0];
+        const certificateId = certificate.certificate_id || `pending-${certificate.application_id}`;
+        const verifyUrl = `${req.protocol}://${req.get('host')}/api/certificates/verify/${encodeURIComponent(certificateId)}`;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicConnect Certificate</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Georgia, serif; background: #f5f7fb; color: #10253d; }
+    .certificate { width: min(900px, calc(100% - 32px)); padding: 56px; border: 10px solid #1285f3; background: #fff; text-align: center; box-shadow: 0 20px 60px rgba(16,37,61,.18); }
+    .brand { color: #ff6800; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font-size: 2.6rem; margin: 18px 0; }
+    .name { font-size: 2rem; color: #1285f3; margin: 22px 0; }
+    p { font-size: 1.1rem; line-height: 1.7; }
+    .meta { margin-top: 28px; color: #61758a; }
+    .verify { margin-top: 24px; padding-top: 18px; border-top: 1px solid #dbe6f3; font-family: Arial, sans-serif; font-size: .95rem; color: #4f6378; }
+    .signatures { display: flex; gap: 40px; justify-content: center; margin-top: 34px; font-family: Arial, sans-serif; }
+    .signature { min-width: 220px; border-top: 1px solid #10253d; padding-top: 8px; }
+    .print { margin-top: 28px; padding: 12px 18px; border: 0; border-radius: 10px; color: #fff; background: #1285f3; font-weight: 800; cursor: pointer; }
+    @media print { body { background: #fff; } .print { display: none; } .certificate { box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <main class="certificate">
+    <div class="brand">CivicConnect</div>
+    <h1>Certificate of Volunteering</h1>
+    <p>This certifies that</p>
+    <div class="name">${escapeHtml(cleanText(certificate.volunteer_name, 200))}</div>
+    <p>completed <strong>${Number(certificate.hours_completed) || 0} volunteer hours</strong> for <strong>${escapeHtml(cleanText(certificate.opportunity_title, 200))}</strong> with <strong>${escapeHtml(cleanText(certificate.ngo_name, 200))}</strong>.</p>
+    <p class="meta">Opportunity dates: ${String(certificate.start_date).slice(0, 10)} to ${String(certificate.end_date).slice(0, 10)}</p>
+    <div class="signatures">
+      <div class="signature">${escapeHtml(cleanText(certificate.ngo_name, 200))}</div>
+      <div class="signature">CivicConnect Admin</div>
+    </div>
+    <div class="verify">
+      Certificate ID: <strong>${escapeHtml(certificateId)}</strong><br>
+      Verify: ${escapeHtml(verifyUrl)}
+    </div>
+    <button class="print" onclick="window.print()">Print / Save as PDF</button>
+  </main>
+</body>
+</html>`);
+    } catch (err) {
+        console.error('Certificate error:', err);
+        res.status(500).send('Failed to generate certificate.');
+    }
+});
+
+app.get('/api/certificates/verify/:certificate_id', async (req, res) => {
+    try {
+        const [rows] = await db.execute(`
+            SELECT
+                a.certificate_id,
+                a.hours_completed,
+                a.attendance_confirmed_at,
+                u.name AS volunteer_name,
+                o.title AS opportunity_title,
+                n.name AS ngo_name
+            FROM Applications a
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            JOIN NGOs n ON o.ngo_id = n.ngo_id
+            WHERE a.certificate_id = ?
+              AND a.status = 'accepted'
+              AND a.attendance_confirmed = 'YES'
+        `, [req.params.certificate_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ valid: false, error: 'Certificate not found.' });
+        }
+
+        const certificate = rows[0];
+        res.json({
+            valid: true,
+            certificate_id: certificate.certificate_id,
+            volunteer_name: certificate.volunteer_name,
+            opportunity_title: certificate.opportunity_title,
+            ngo_name: certificate.ngo_name,
+            hours_completed: Number(certificate.hours_completed) || 0,
+            issued_at: certificate.attendance_confirmed_at
+        });
+    } catch (err) {
+        console.error('Certificate verification error:', err);
+        res.status(500).json({ valid: false, error: 'Failed to verify certificate.' });
+    }
+});
+
 // ===== MISC =====
 
 app.get('/api/protected', authenticateToken, (req, res) => {
@@ -1677,11 +2461,16 @@ app.get('/', (req, res) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-const server = app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
 
-server.on('error', (err) => {
-    console.error('Server failed to start:', err);
-    process.exit(1);
-});
+if (require.main === module) {
+    const server = app.listen(PORT, () => {
+        console.log(`Server running at http://localhost:${PORT}`);
+    });
+
+    server.on('error', (err) => {
+        console.error('Server failed to start:', err);
+        process.exit(1);
+    });
+}
+
+module.exports = app;

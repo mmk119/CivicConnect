@@ -4,7 +4,10 @@
   "description": "CivicConnect is a user-friendly web platform that allows NGOs to post opportunities and individuals (students, community members) to apply.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "lint": "eslint .",
+    "test": "jest"
   },
   "repository": {
     "type": "git",

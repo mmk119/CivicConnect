@@ -387,6 +387,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 <body>
   <header class="topbar">
@@ -408,6 +409,7 @@
       <button class="tab-button" data-tab="ngos"><i class="fas fa-building"></i> NGO Approvals</button>
       <button class="tab-button" data-tab="opportunities"><i class="fas fa-briefcase"></i> Opportunities</button>
       <button class="tab-button" data-tab="applications"><i class="fas fa-file-signature"></i> Applications</button>
+      <button class="tab-button" data-tab="feedback"><i class="fas fa-comments"></i> Feedback</button>
       <button class="tab-button" data-tab="audit"><i class="fas fa-shield-halved"></i> Audit Log</button>
       <button class="tab-button" data-tab="exports"><i class="fas fa-file-export"></i> Exports</button>
     </aside>
@@ -627,6 +629,47 @@
         </div>
       </section>
 
+      <section id="feedback-section" class="section">
+        <div class="section-header">
+          <div>
+            <h2>Feedback Moderation</h2>
+            <p>Review opportunity feedback and volunteer endorsements. Remove harmful, abusive, or unsafe content.</p>
+          </div>
+          <button class="btn" onclick="loadFeedback()"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
+        <div class="tools">
+          <input id="feedback-search" type="search" placeholder="Search author, volunteer, NGO, opportunity, comment">
+          <select id="feedback-type">
+            <option value="">All feedback</option>
+            <option value="opportunity">Volunteer reviews of opportunities</option>
+            <option value="volunteer">NGO endorsements of volunteers</option>
+          </select>
+          <select id="feedback-rating">
+            <option value="">All ratings</option>
+            <option value="low">Needs review (1-2)</option>
+            <option value="mid">Moderate (3)</option>
+            <option value="high">Positive (4-5)</option>
+          </select>
+          <button class="btn" onclick="loadFeedback()"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Author</th>
+                <th>Context</th>
+                <th>Rating</th>
+                <th>Feedback</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="feedback-list"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="exports-section" class="section">
         <div class="section-header">
           <div>
@@ -676,6 +719,17 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "Not available";
       return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    const weekdayOrder = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+    function formatScheduleDays(days) {
+      const selected = Array.isArray(days) ? days : String(days || "").split(",");
+      return weekdayOrder.filter(day => selected.includes(day)).join(", ") || "Days TBD";
+    }
+
+    function formatTime(value) {
+      return value ? String(value).slice(0, 5) : "Time TBD";
     }
 
     function badge(value) {
@@ -885,7 +939,7 @@
           <td>${escapeHTML(opp.ngo_name)}</td>
           <td>${escapeHTML(opp.field || "General")}</td>
           <td>${escapeHTML(opp.location)}</td>
-          <td>${formatDate(opp.start_date)} - ${formatDate(opp.end_date)}</td>
+          <td>${formatDate(opp.start_date)} - ${formatDate(opp.end_date)}<br><small>${formatScheduleDays(opp.schedule_days)} ${formatTime(opp.start_time)}-${formatTime(opp.end_time)}</small></td>
           <td>${Number(opp.hours_required) || 0}</td>
           <td>${Number(opp.application_count) || 0}</td>
           <td><button class="btn danger" onclick="deleteOpportunity(${opp.opportunity_id})">Delete</button></td>
@@ -911,7 +965,7 @@
       setRows("applications-list", applications.map(app => `
         <tr>
           <td>${escapeHTML(app.volunteer_name)}<br><small>${escapeHTML(app.volunteer_email)}</small></td>
-          <td>${escapeHTML(app.opportunity_title)}<br><small>${escapeHTML(app.field || "General")}</small></td>
+          <td>${escapeHTML(app.opportunity_title)}<br><small>${escapeHTML(app.field || "General")} | ${formatScheduleDays(app.schedule_days)} ${formatTime(app.start_time)}-${formatTime(app.end_time)}</small></td>
           <td>${escapeHTML(app.ngo_name)}</td>
           <td>${badge(app.status)}</td>
           <td>${formatDate(app.applied_at)}</td>
@@ -919,6 +973,70 @@
           <td>${badge(app.attendance_confirmed)}</td>
         </tr>
       `).join(""), 7);
+    }
+
+    async function loadFeedback() {
+      const params = new URLSearchParams({
+        search: document.getElementById("feedback-search").value,
+        type: document.getElementById("feedback-type").value
+      });
+      const feedback = await api(`/api/admin/feedback?${params}`, { headers: authHeaders() });
+      if (!feedback) return;
+      const ratingFilter = document.getElementById("feedback-rating").value;
+      const filtered = feedback.filter(item => {
+        const rating = Number(item.rating) || 0;
+        if (ratingFilter === "low") return rating <= 2;
+        if (ratingFilter === "mid") return rating === 3;
+        if (ratingFilter === "high") return rating >= 4;
+        return true;
+      });
+      setRows("feedback-list", filtered.map(item => {
+        const typeLabel = item.feedback_type === "opportunity"
+          ? "Opportunity review"
+          : "Volunteer endorsement";
+        const context = item.feedback_type === "opportunity"
+          ? `${escapeHTML(item.opportunity_title)}<br><small>NGO: ${escapeHTML(item.ngo_name)}</small>`
+          : `${escapeHTML(item.volunteer_name)}<br><small>${escapeHTML(item.opportunity_title)} with ${escapeHTML(item.ngo_name)}</small>`;
+        return `
+          <tr>
+            <td>${badge(typeLabel)}</td>
+            <td>${escapeHTML(item.author_name)}<br><small>${escapeHTML(item.author_email)}</small></td>
+            <td>${context}</td>
+            <td><strong>${Number(item.rating) || 0}/5</strong></td>
+            <td>
+              ${item.open_reports ? `<span class="badge danger">${Number(item.open_reports)} open report${Number(item.open_reports) === 1 ? "" : "s"}</span><br>` : ""}
+              ${badge(item.review_status || "new")}
+              <br>
+              ${item.title ? `<strong>${escapeHTML(item.title)}</strong><br>` : ""}
+              ${escapeHTML(item.comment)}
+              ${item.extra_note ? `<br><small><strong>Note:</strong> ${escapeHTML(item.extra_note)}</small>` : ""}
+            </td>
+            <td>${formatDate(item.created_at)}</td>
+            <td>
+              ${item.review_status !== "reviewed" ? `
+              <button class="btn" onclick="markFeedbackReviewed('${item.feedback_type}', ${item.feedback_id})">
+                Reviewed
+              </button>` : ""}
+              <button class="btn danger" onclick="deleteFeedback('${item.feedback_type}', ${item.feedback_id})">
+                Delete
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join(""), 7);
+    }
+
+    async function deleteFeedback(type, id) {
+      if (!confirm("Delete this feedback? Use this only for harmful, abusive, or unsafe content.")) return;
+      await api(`/api/admin/feedback/${type}/${id}`, { method: "DELETE", headers: authHeaders() });
+      await loadFeedback();
+      await loadAuditLogs();
+    }
+
+    async function markFeedbackReviewed(type, id) {
+      await api(`/api/admin/feedback/${type}/${id}/review`, { method: "PATCH", headers: authHeaders() });
+      await loadFeedback();
+      await loadAuditLogs();
     }
 
     async function loadAuditLogs() {
@@ -963,6 +1081,7 @@
         loadNgos(),
         loadOpportunities(),
         loadApplications(),
+        loadFeedback(),
         loadAuditLogs()
       ]);
     }

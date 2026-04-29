@@ -582,6 +582,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 
 <body>
@@ -661,6 +662,20 @@
               <i class="fas fa-clock"></i> Total Volunteering Hours
             </div>
             <div class="info-value" id="total-hours">Loading...</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-calendar-check"></i> Availability
+            </div>
+            <div class="info-value" id="availability">Loading...</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">
+              <i class="fas fa-heart"></i> Preferred Matches
+            </div>
+            <div class="info-value" id="preferences">Loading...</div>
           </div>
         </div>
 
@@ -755,6 +770,38 @@
               </label>
               <textarea class="form-control" id="edit-experiences" rows="2" placeholder="e.g. Volunteer at XYZ, Project Manager at ABC"></textarea>
             </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-available-days">
+                <i class="fas fa-calendar-check"></i> Available Days (MON, TUE, WED...)
+              </label>
+              <input type="text" class="form-control" id="edit-available-days" placeholder="MON, WED, SAT">
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label" for="edit-available-start">Available From</label>
+                <input type="time" class="form-control" id="edit-available-start">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-available-end">Available Until</label>
+                <input type="time" class="form-control" id="edit-available-end">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-preferred-fields">
+                <i class="fas fa-heart"></i> Preferred Fields
+              </label>
+              <input type="text" class="form-control" id="edit-preferred-fields" placeholder="Education, Environment">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="edit-preferred-cities">
+                <i class="fas fa-location-dot"></i> Preferred Cities
+              </label>
+              <input type="text" class="form-control" id="edit-preferred-cities" placeholder="Beirut, Tripoli">
+            </div>
           </form>
         </div>
         <div class="modal-footer border-top">
@@ -797,6 +844,8 @@
       const cityField = document.getElementById("city");
       const dobField = document.getElementById("dob");
       const totalHoursField = document.getElementById("total-hours");
+      const availabilityField = document.getElementById("availability");
+      const preferencesField = document.getElementById("preferences");
       const skillsContainer = document.getElementById("skills");
       const experiencesContainer = document.getElementById("experiences");
       const uploadPhotoInput = document.getElementById("upload-photo");
@@ -817,6 +866,7 @@
 
           const data = await response.json();
           console.log("Profile data:", data);
+          window.latestProfile = data;
 
           nameField.textContent = data.name || 'Not provided';
           emailField.textContent = data.email || 'Not provided';
@@ -824,6 +874,15 @@
           cityField.textContent = data.city || 'Not provided';
           dobField.textContent = data.dateOfBirth || 'Not provided';
           totalHoursField.textContent = `${data.totalHours || 0} hours`;
+          const availabilityDays = (data.availableDays || []).join(', ');
+          const availabilityTime = data.availableStartTime && data.availableEndTime
+            ? `${data.availableStartTime} - ${data.availableEndTime}`
+            : '';
+          availabilityField.textContent = [availabilityDays, availabilityTime].filter(Boolean).join(' | ') || 'Not provided';
+          preferencesField.textContent = [
+            (data.preferredFields || []).join(', '),
+            (data.preferredCities || []).join(', ')
+          ].filter(Boolean).join(' | ') || 'Not provided';
 
           profilePicture.src = data.imageUrl || 'default-profile.jpg';
           profilePicture.onerror = function () {
@@ -914,6 +973,11 @@
           .map(el => el.textContent.trim().replace('✓', '').trim())
           .join(', ');
         document.getElementById("edit-experiences").value = experiences;
+        document.getElementById("edit-available-days").value = (window.latestProfile?.availableDays || []).join(', ');
+        document.getElementById("edit-available-start").value = window.latestProfile?.availableStartTime || "";
+        document.getElementById("edit-available-end").value = window.latestProfile?.availableEndTime || "";
+        document.getElementById("edit-preferred-fields").value = (window.latestProfile?.preferredFields || []).join(', ');
+        document.getElementById("edit-preferred-cities").value = (window.latestProfile?.preferredCities || []).join(', ');
 
         editModal.show();
       });
@@ -926,7 +990,12 @@
           city: document.getElementById("edit-city").value,
           dateOfBirth: document.getElementById("edit-dob").value,
           skills: document.getElementById("edit-skills").value.split(',').map(s => s.trim()).filter(s => s),
-          experiences: document.getElementById("edit-experiences").value.split(',').map(e => e.trim()).filter(e => e)
+          experiences: document.getElementById("edit-experiences").value.split(',').map(e => e.trim()).filter(e => e),
+          availableDays: document.getElementById("edit-available-days").value.split(',').map(s => s.trim()).filter(Boolean),
+          availableStartTime: document.getElementById("edit-available-start").value,
+          availableEndTime: document.getElementById("edit-available-end").value,
+          preferredFields: document.getElementById("edit-preferred-fields").value.split(',').map(s => s.trim()).filter(Boolean),
+          preferredCities: document.getElementById("edit-preferred-cities").value.split(',').map(s => s.trim()).filter(Boolean)
         };
 
         try {

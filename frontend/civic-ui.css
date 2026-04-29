@@ -1,0 +1,172 @@
+/* Light responsive polish only.
+   This file intentionally keeps each page's original visual design. */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+button,
+.btn,
+a[class*="btn"],
+.apply-button,
+.details-link,
+.btn-details,
+.btn-apply-card,
+.btn-modern {
+  min-height: 40px;
+}
+
+table {
+  width: 100%;
+}
+
+.table-wrap,
+.opportunities-container,
+.cards-grid,
+.history-grid,
+.opportunity-grid,
+.main,
+.page,
+.dashboard-content,
+.profile-container,
+.container {
+  max-width: 100%;
+}
+
+.list-group-item,
+.opp-card,
+.history-card,
+.opportunity-card,
+.panel,
+.profile-card,
+.preview-card,
+.auth-card {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .navbar,
+  .navbar-custom,
+  .topbar {
+    height: auto;
+  }
+
+  .navbar .container-fluid,
+  .navbar-custom .container-fluid,
+  .topbar,
+  .hero,
+  .section-header,
+  .card-top,
+  .card-actions,
+  .top-actions,
+  .nav-links,
+  .navbar-nav {
+    flex-wrap: wrap;
+  }
+
+  .search-grid,
+  .cards-grid,
+  .history-grid,
+  .split-grid,
+  .info-grid,
+  .action-buttons,
+  .schedule-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    min-width: 0;
+  }
+
+  .dashboard-content,
+  .preview-card,
+  .profile-container,
+  .page,
+  .main,
+  .container,
+  .auth-card {
+    width: min(100% - 24px, 100%) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 9vw, 2.4rem) !important;
+  }
+
+  h2 {
+    font-size: clamp(1.35rem, 7vw, 1.9rem) !important;
+  }
+
+  .navbar-brand,
+  .brand {
+    font-size: 1.25rem !important;
+  }
+
+  .nav-links,
+  .navbar-nav,
+  .top-actions,
+  .card-footer-actions,
+  .card-actions,
+  .form-actions {
+    gap: 10px;
+  }
+
+  .nav-links a,
+  .nav-links button,
+  .navbar-nav a,
+  .top-actions a,
+  .top-actions button {
+    font-size: 0.92rem !important;
+  }
+
+  .btn,
+  button,
+  .apply-button,
+  .details-link,
+  .btn-details,
+  .btn-apply-card,
+  .btn-modern {
+    white-space: normal;
+  }
+
+  .day-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

@@ -6,7 +6,7 @@ body {
     /* SAME DARK STYLE AS OTHER PAGES */
     background:
         linear-gradient(rgba(10,25,50,0.85), rgba(10,25,50,0.95)),
-        url('handinhand.jpeg') no-repeat center center fixed;
+        url('handinhand.png') no-repeat center center fixed;
 
     background-size: cover;
 

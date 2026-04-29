@@ -708,6 +708,7 @@
         .toast-message.error { background: #dc3545; }
         .toast-message.info { background: var(--navy); }
     </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 <body>
 
@@ -1003,6 +1004,17 @@
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
+    const weekdayOrder = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+    function formatScheduleDays(days) {
+        const selected = Array.isArray(days) ? days : String(days || "").split(",");
+        return weekdayOrder.filter(day => selected.includes(day)).join(", ") || "Days TBD";
+    }
+
+    function formatTime(value) {
+        return value ? String(value).slice(0, 5) : "Time TBD";
+    }
+
     function getLocalEndOfDay(dateStr) {
         if (!dateStr) return null;
         const dateOnly = String(dateStr).slice(0, 10);
@@ -1096,6 +1108,7 @@
                             <i class="fa fa-building me-1"></i>${escapeHTML(o.ngo_name || 'NGO')}
                         </a>
                         ${o.field ? `<span class="field-tag">${escapeHTML(o.field)}</span>` : ''}
+                        ${o.is_good_match ? `<span class="field-tag" title="Matches your availability or preferences">Good match</span>` : ''}
                     </div>
                     <div class="card-title">${escapeHTML(o.title)}</div>
                     <div class="card-desc">${escapeHTML(o.description)}</div>
@@ -1107,6 +1120,14 @@
                         <div class="info-row">
                             <i class="fa fa-calendar-day"></i>
                             <span>${formatDate(o.start_date)} → ${formatDate(o.end_date)}</span>
+                        </div>
+                        <div class="info-row">
+                            <i class="fa fa-calendar-week"></i>
+                            <span>${formatScheduleDays(o.schedule_days)}</span>
+                        </div>
+                        <div class="info-row">
+                            <i class="fa fa-business-time"></i>
+                            <span>${formatTime(o.start_time)} - ${formatTime(o.end_time)}</span>
                         </div>
                         <div class="info-row">
                             <i class="fa fa-clock"></i>

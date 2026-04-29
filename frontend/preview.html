@@ -16,7 +16,7 @@
 
             background:
                 linear-gradient(rgba(10,25,50,0.85), rgba(10,25,50,0.95)),
-                url('handinhand.jpeg') no-repeat center center fixed;
+                url('handinhand.png') no-repeat center center fixed;
 
             background-size: cover;
 
@@ -91,6 +91,7 @@
             transform: scale(1.05);
         }
     </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 
 <body>
@@ -106,6 +107,8 @@
 
         <p><strong>Start Date:</strong> <span id="previewStartDate"></span></p>
         <p><strong>End Date:</strong> <span id="previewEndDate"></span></p>
+        <p><strong>Volunteering Days:</strong> <span id="previewScheduleDays"></span></p>
+        <p><strong>Timing:</strong> <span id="previewTiming"></span></p>
         <p><strong>Hours Required:</strong> <span id="previewHours"></span></p>
         <p><strong>Volunteers Needed:</strong> <span id="previewCapacity"></span></p>
         <p><strong>Location:</strong> <span id="previewLocation"></span></p>
@@ -141,6 +144,17 @@
             return true;
         }
 
+        const weekdayOrder = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+        function formatScheduleDays(days) {
+            const selected = Array.isArray(days) ? days : String(days || "").split(",");
+            return weekdayOrder.filter(day => selected.includes(day)).join(", ") || "Days TBD";
+        }
+
+        function formatTime(value) {
+            return value ? String(value).slice(0, 5) : "Time TBD";
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             if (!requireNgoAccess()) return;
 
@@ -159,6 +173,8 @@
             document.getElementById("previewDescription").innerText = opportunity.description || "";
             document.getElementById("previewStartDate").innerText = opportunity.start_date || "";
             document.getElementById("previewEndDate").innerText = opportunity.end_date || "";
+            document.getElementById("previewScheduleDays").innerText = formatScheduleDays(opportunity.schedule_days);
+            document.getElementById("previewTiming").innerText = `${formatTime(opportunity.start_time)} - ${formatTime(opportunity.end_time)}`;
             document.getElementById("previewHours").innerText = opportunity.hours_required ? `${opportunity.hours_required} hours` : "";
             document.getElementById("previewCapacity").innerText = opportunity.capacity ? `${opportunity.capacity} volunteers` : "";
             document.getElementById("previewLocation").innerText = opportunity.location || "";

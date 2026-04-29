@@ -179,6 +179,7 @@
       .profile-hero { grid-template-columns: 1fr; }
     }
   </style>
+  <link rel="stylesheet" href="civic-ui.css">
 </head>
 <body>
   <nav class="navbar">
@@ -241,6 +242,17 @@
       return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     }
 
+    const weekdayOrder = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+    function formatScheduleDays(days) {
+      const selected = Array.isArray(days) ? days : String(days || "").split(",");
+      return weekdayOrder.filter(day => selected.includes(day)).join(", ") || "Days TBD";
+    }
+
+    function formatTime(value) {
+      return value ? String(value).slice(0, 5) : "Time TBD";
+    }
+
     async function loadNgoProfile() {
       const ngoId = new URLSearchParams(window.location.search).get("id");
       if (!ngoId) {
@@ -281,6 +293,9 @@
               <p>${escapeHTML(opp.description || "No description.")}</p>
               <p><i class="fas fa-location-dot"></i> ${escapeHTML(opp.location || "Location TBD")}</p>
               <p><i class="fas fa-calendar-day"></i> ${formatDate(opp.start_date)} - ${formatDate(opp.end_date)}</p>
+              <p><i class="fas fa-calendar-week"></i> ${formatScheduleDays(opp.schedule_days)}</p>
+              <p><i class="fas fa-business-time"></i> ${formatTime(opp.start_time)} - ${formatTime(opp.end_time)}</p>
+              <p><i class="fas fa-clock"></i> ${Number(opp.hours_required) || 0} volunteer hours</p>
               <p><i class="fas fa-users"></i> ${Number(opp.capacity) || 0} volunteers needed</p>
             </div>
             <div class="card-footer">
