@@ -234,6 +234,11 @@
       return value ? String(value).slice(0, 5) : "Time TBD";
     }
 
+    function formatHours(value) {
+      const hours = Number(value) || 0;
+      return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
     if (!oppId) {
       showToast("No opportunity was selected.", "error");
     } else {
@@ -266,7 +271,7 @@
             `Timing: ${formatTime(data.start_time)} - ${formatTime(data.end_time)}`;
 
           document.getElementById('opportunity-hours').textContent =
-            `Hours Required: ${data.hours_required || 0}`;
+            `Hours Required: ${formatHours(data.hours_required)}`;
           document.getElementById('opportunity-capacity').textContent =
             `Volunteers Accepted: ${data.accepted_count || 0}/${data.capacity || 'Open'}`;
 

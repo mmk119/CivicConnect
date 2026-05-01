@@ -102,7 +102,8 @@
         <div class="schedule-summary mb-3">
             <div>
                 <span class="summary-label">Calculated Volunteer Hours</span>
-                <strong id="hoursPreview">Choose dates, days, and timing</strong>
+                <strong id="hoursPreview" aria-live="polite">Choose dates, days, and timing</strong>
+                <small id="hoursBreakdown" class="hours-breakdown"></small>
             </div>
             <input type="hidden" id="hours_required" value="">
         </div>
@@ -123,9 +124,11 @@
                 placeholder="Optional: one question per line, up to 5 questions"></textarea>
         </div>
 
-        <button type="button" id="previewBtn" class="btn btn-info" onclick="showPreview()">Preview</button>
-        <button type="button" id="submitBtn" class="btn btn-primary" onclick="submitOpportunity()">Submit</button>
-        <button type="button" id="cancelEditBtn" class="btn btn-secondary d-none" onclick="cancelEditOpportunity()">Cancel Edit</button>
+        <div class="form-actions">
+            <button type="button" id="previewBtn" class="btn btn-info" onclick="showPreview()">Preview</button>
+            <button type="button" id="submitBtn" class="btn btn-primary" onclick="submitOpportunity()">Submit</button>
+            <button type="button" id="cancelEditBtn" class="btn btn-secondary d-none" onclick="cancelEditOpportunity()">Cancel Edit</button>
+        </div>
     </form>
 </div>
 

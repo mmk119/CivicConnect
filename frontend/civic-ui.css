@@ -1,5 +1,24 @@
-/* Light responsive polish only.
-   This file intentionally keeps each page's original visual design. */
+/* Shared CivicConnect UX polish.
+   Loaded after page-level CSS so common controls stay consistent. */
+
+:root {
+  --cc-blue: #1285f3;
+  --cc-blue-dark: #0b5fb3;
+  --cc-orange: #ff6800;
+  --cc-navy: #10253d;
+  --cc-text: #18324a;
+  --cc-muted: #61758a;
+  --cc-border: #dbe5ef;
+  --cc-surface: #ffffff;
+  --cc-soft: #f5f8fb;
+  --cc-success: #198754;
+  --cc-danger: #d83b3b;
+  --cc-warning: #946200;
+  --cc-radius: 10px;
+  --cc-shadow-sm: 0 6px 18px rgba(16, 37, 61, 0.08);
+  --cc-shadow-md: 0 14px 34px rgba(16, 37, 61, 0.14);
+  --cc-focus: 0 0 0 4px rgba(18, 133, 243, 0.22);
+}
 
 * {
   box-sizing: border-box;
@@ -7,10 +26,12 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
 }
 
 img,
@@ -32,6 +53,39 @@ textarea {
   max-width: 100%;
 }
 
+input,
+select,
+textarea,
+.form-control,
+.form-select {
+  min-height: 42px;
+  border-color: var(--cc-border);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--cc-blue) !important;
+  box-shadow: var(--cc-focus) !important;
+  outline: none;
+}
+
+textarea {
+  line-height: 1.5;
+}
+
+::placeholder {
+  color: #8393a5;
+  opacity: 1;
+}
+
+::selection {
+  color: #fff;
+  background: var(--cc-blue);
+}
+
 button,
 .btn,
 a[class*="btn"],
@@ -39,8 +93,233 @@ a[class*="btn"],
 .details-link,
 .btn-details,
 .btn-apply-card,
-.btn-modern {
+.btn-modern,
+.feedback-button,
+.search-btn,
+.clear-btn,
+.primary-btn,
+.secondary-btn {
   min-height: 40px;
+}
+
+button,
+.btn,
+a[class*="btn"],
+.apply-button,
+.details-link,
+.btn-details,
+.btn-apply-card,
+.btn-modern,
+.feedback-button,
+.search-btn,
+.clear-btn,
+.tab-button,
+.filter-btn,
+.primary-btn,
+.secondary-btn,
+.status-tab {
+  border-radius: 8px;
+  touch-action: manipulation;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+a[class*="btn"]:hover:not([aria-disabled="true"]),
+.apply-button:hover,
+.details-link:hover,
+.btn-details:hover,
+.btn-apply-card:hover:not(:disabled),
+.btn-modern:hover,
+.feedback-button:hover,
+.search-btn:hover,
+.clear-btn:hover,
+.tab-button:hover,
+.filter-btn:hover,
+.primary-btn:hover,
+.secondary-btn:hover,
+.status-tab:hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+.btn:focus-visible,
+a[class*="btn"]:focus-visible,
+.apply-button:focus-visible,
+.details-link:focus-visible,
+.btn-details:focus-visible,
+.btn-apply-card:focus-visible,
+.btn-modern:focus-visible,
+.feedback-button:focus-visible,
+.search-btn:focus-visible,
+.clear-btn:focus-visible,
+.tab-button:focus-visible,
+.filter-btn:focus-visible,
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible,
+.status-tab:focus-visible {
+  outline: 3px solid rgba(18, 133, 243, 0.32);
+  outline-offset: 2px;
+}
+
+button:disabled,
+.btn:disabled,
+.btn-apply-card:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.btn,
+button,
+.primary-btn,
+.secondary-btn,
+.apply-button,
+.details-link,
+.btn-details,
+.btn-apply-card,
+.btn-modern,
+.feedback-button,
+.search-btn {
+  font-weight: 700;
+}
+
+.btn-primary,
+.btn-primary-modern,
+.search-btn,
+.feedback-button,
+.primary-btn {
+  box-shadow: 0 10px 22px rgba(18, 133, 243, 0.18);
+}
+
+.btn-danger,
+.btn.danger {
+  box-shadow: 0 10px 22px rgba(216, 59, 59, 0.16);
+}
+
+.navbar,
+.navbar-custom,
+.topbar {
+  isolation: isolate;
+}
+
+.navbar a,
+.navbar button,
+.navbar-custom a,
+.navbar-custom button,
+.topbar a,
+.topbar button,
+.nav-links a,
+.nav-links button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.brand,
+.navbar-brand {
+  min-width: 0;
+}
+
+.brand img,
+.navbar-brand img,
+.brand-logo-mark {
+  flex: 0 0 auto;
+}
+
+.hero p,
+.section-header p,
+.description,
+.card-desc,
+.meta-list,
+.info-row,
+.subtitle {
+  line-height: 1.6;
+}
+
+.stat-card,
+.panel,
+.history-card,
+.opp-card,
+.opportunity-card,
+.profile-card,
+.preview-card,
+.auth-card,
+.summary-card,
+.search-card,
+.received-feedback,
+.empty-state,
+.error-state,
+.list-group-item {
+  border-radius: var(--cc-radius);
+}
+
+.stat-card,
+.panel,
+.history-card,
+.opp-card,
+.opportunity-card,
+.profile-card,
+.preview-card,
+.auth-card,
+.search-card {
+  box-shadow: var(--cc-shadow-sm);
+}
+
+.history-card:hover,
+.opp-card:hover,
+.opportunity-card:hover,
+.profile-card:hover,
+.stat-card:hover {
+  box-shadow: var(--cc-shadow-md);
+}
+
+.badge,
+.status-badge,
+.field-badge,
+.field-tag,
+.ngo-tag,
+.capacity-tag,
+.results-count {
+  min-height: 26px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.table-wrap {
+  box-shadow: var(--cc-shadow-sm);
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+td,
+th {
+  line-height: 1.45;
+}
+
+tbody tr {
+  transition: background-color 0.16s ease;
+}
+
+tbody tr:hover {
+  background-color: rgba(18, 133, 243, 0.04);
+}
+
+.empty-state,
+.error-state,
+.loading {
+  border-radius: var(--cc-radius);
+}
+
+.toast-message,
+.toast {
+  border-radius: var(--cc-radius);
+  box-shadow: var(--cc-shadow-md);
 }
 
 table {
@@ -76,6 +355,7 @@ table {
   .navbar-custom,
   .topbar {
     height: auto;
+    position: relative;
   }
 
   .navbar .container-fluid,
@@ -91,6 +371,37 @@ table {
     flex-wrap: wrap;
   }
 
+  .navbar .container-fluid,
+  .navbar-custom .container-fluid {
+    gap: 12px;
+  }
+
+  .nav-links,
+  .navbar-nav,
+  .top-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .hero {
+    text-align: left;
+  }
+
+  .hero-stats {
+    flex-wrap: wrap;
+    justify-content: flex-start !important;
+  }
+
+  .section-header {
+    align-items: flex-start !important;
+  }
+
+  .section-tools,
+  .tools {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
   .search-grid,
   .cards-grid,
   .history-grid,
@@ -104,6 +415,10 @@ table {
   .table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  th {
+    position: static;
   }
 }
 
@@ -156,6 +471,20 @@ table {
     font-size: 0.92rem !important;
   }
 
+  .navbar,
+  .navbar-custom,
+  .topbar {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .brand img,
+  .navbar-brand img,
+  .brand-logo-mark {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
   .btn,
   button,
   .apply-button,
@@ -168,5 +497,36 @@ table {
 
   .day-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .card-actions,
+  .card-footer-actions,
+  .action-buttons,
+  .form-actions,
+  .search-actions {
+    flex-direction: column;
+  }
+
+  .btn,
+  .apply-button,
+  .details-link,
+  .btn-details,
+  .btn-apply-card,
+  .btn-modern,
+  .primary-btn,
+  .secondary-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

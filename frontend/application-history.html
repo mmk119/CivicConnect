@@ -119,6 +119,12 @@
       text-align: center;
     }
 
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
     .summary-number {
       display: block;
       font-size: 2rem;
@@ -398,6 +404,10 @@
         flex-direction: column;
       }
 
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .page {
         width: min(100% - 28px, 1180px);
         margin: 28px auto;
@@ -408,6 +418,12 @@
       }
 
       .feedback-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .summary-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -435,9 +451,15 @@
         <h1>Application History</h1>
         <p>Track the opportunities you applied to, their current status, the date you applied, and the NGO behind each opportunity.</p>
       </div>
-      <div class="summary-card">
-        <span class="summary-number" id="application-count">0</span>
-        <span class="summary-label">Applications</span>
+      <div class="summary-grid" aria-label="Volunteer application summary">
+        <div class="summary-card">
+          <span class="summary-number" id="application-count">0</span>
+          <span class="summary-label">Applications</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-number" id="completed-hours-count">0</span>
+          <span class="summary-label">Hours Completed</span>
+        </div>
       </div>
     </section>
 
@@ -513,6 +535,11 @@
       return value ? String(value).slice(0, 5) : "Time TBD";
     }
 
+    function formatHours(value) {
+      const hours = Number(value) || 0;
+      return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
     function toMinutes(value) {
       const [hours, minutes] = String(value || "").slice(0, 5).split(":").map(Number);
       if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
@@ -522,7 +549,9 @@
     function scheduleRows() {
       const rows = [];
       for (let hour = 7; hour <= 21; hour += 1) {
-        const display = hour === 12 ? "12:00" : hour > 12 ? `${hour - 12}:00` : `${hour}:00`;
+        const displayHour = hour === 12 ? 12 : hour > 12 ? hour - 12 : hour;
+        const meridiem = hour >= 12 ? "PM" : "AM";
+        const display = `${displayHour}:00 ${meridiem}`;
         rows.push({ hour, display });
       }
       return rows;
@@ -541,24 +570,29 @@
       ];
       const rows = scheduleRows();
       const startDayMinutes = 7 * 60;
-      const rowHeight = 78;
+      const endDayMinutes = 22 * 60;
+      const rowHeight = 52;
+      const scheduleHeight = rows.length * rowHeight;
       const safeName = localStorage.getItem("userName") || "Volunteer";
 
       const events = accepted.flatMap(app => {
-        const selectedDays = String(app.schedule_days || "").split(",").filter(Boolean);
+        const selectedDays = String(app.schedule_days || "").split(",").map(day => day.trim()).filter(Boolean);
         const start = toMinutes(app.start_time);
         const end = toMinutes(app.end_time);
         if (start === null || end === null || end <= start) return [];
+        const clampedStart = Math.max(startDayMinutes, Math.min(start, endDayMinutes));
+        const clampedEnd = Math.max(startDayMinutes, Math.min(end, endDayMinutes));
+        if (clampedEnd <= clampedStart) return [];
         return selectedDays.map(day => ({
           day,
-          top: Math.max(0, ((start - startDayMinutes) / 60) * rowHeight),
-          height: Math.max(48, ((end - start) / 60) * rowHeight - 8),
+          top: ((clampedStart - startDayMinutes) / 60) * rowHeight,
+          height: Math.max(42, ((clampedEnd - clampedStart) / 60) * rowHeight - 6),
           title: app.title,
           location: app.location || "Location TBD",
           ngo: app.ngo_name || "NGO",
           time: `${formatTime(app.start_time)} - ${formatTime(app.end_time)}`
         }));
-      });
+      }).sort((a, b) => a.top - b.top || a.title.localeCompare(b.title));
 
       const escape = escapeHTML;
       return `<!DOCTYPE html>
@@ -568,22 +602,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CivicConnect Accepted Schedule</title>
   <style>
-    body { margin: 0; padding: 28px; font-family: Arial, sans-serif; color: #26323f; background: #fff; }
-    .header { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 22px; }
-    h1 { margin: 0 0 6px; font-size: 28px; color: #10253d; }
-    p { margin: 0; color: #61758a; }
-    .schedule { display: grid; grid-template-columns: 72px repeat(7, minmax(120px, 1fr)); border-top: 1px solid #dfe6ee; border-left: 1px solid #dfe6ee; overflow-x: auto; }
-    .day, .time, .cell { border-right: 1px solid #dfe6ee; border-bottom: 1px solid #dfe6ee; }
-    .day { height: 48px; display: grid; place-items: center; font-weight: 700; background: #fafbfc; }
-    .time { height: 78px; padding: 12px 10px; box-sizing: border-box; color: #3f4b57; background: #fff; }
-    .cell { height: 78px; position: relative; background: linear-gradient(#fff, #fff); }
-    .day-column { position: relative; grid-row: 2 / span ${rows.length}; min-height: ${rows.length * rowHeight}px; pointer-events: none; }
-    .event { position: absolute; left: 8px; right: 8px; padding: 10px; border-radius: 8px; background: #e8f4ff; border-left: 5px solid #1285f3; box-shadow: 0 8px 18px rgba(16, 37, 61, .12); overflow: hidden; }
-    .event strong { display: block; font-size: 14px; color: #10253d; margin-bottom: 4px; }
-    .event span { display: block; font-size: 12px; color: #4f6378; line-height: 1.35; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 22px; font-family: Arial, sans-serif; color: #26323f; background: #fff; }
+    .header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 26px; color: #10253d; }
+    p { margin: 0; color: #61758a; font-size: 13px; }
+    .schedule-wrap { width: 100%; overflow-x: auto; border: 1px solid #d7e1ec; border-radius: 10px; background: #fff; }
+    .schedule { min-width: 980px; }
+    .schedule-head, .schedule-body { display: grid; grid-template-columns: 70px repeat(7, minmax(120px, 1fr)); }
+    .day { height: 38px; display: grid; place-items: center; border-left: 1px solid #d7e1ec; border-bottom: 1px solid #d7e1ec; font-size: 12px; font-weight: 800; color: #10253d; background: #f8fafc; }
+    .day:first-child { border-left: 0; }
+    .schedule-body { position: relative; min-height: ${scheduleHeight}px; }
+    .times { position: relative; min-height: ${scheduleHeight}px; border-right: 1px solid #d7e1ec; background: #fff; }
+    .time { position: absolute; left: 0; right: 0; height: ${rowHeight}px; padding: 8px 10px; border-bottom: 1px solid #d7e1ec; color: #506174; font-size: 11px; }
+    .day-column { position: relative; min-height: ${scheduleHeight}px; border-right: 1px solid #d7e1ec; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent ${rowHeight - 1}px, #d7e1ec ${rowHeight - 1}px, #d7e1ec ${rowHeight}px); }
+    .event { position: absolute; left: 6px; right: 6px; padding: 7px 8px; border-radius: 7px; background: #e8f4ff; border-left: 4px solid #1285f3; box-shadow: 0 6px 12px rgba(16, 37, 61, .12); overflow: hidden; }
+    .event strong { display: block; font-size: 12px; line-height: 1.2; color: #10253d; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .event span { display: block; font-size: 10px; color: #4f6378; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .empty { padding: 26px; border: 1px dashed #b9c8d8; border-radius: 12px; color: #61758a; }
     .print { border: 0; background: #1285f3; color: #fff; font-weight: 800; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
-    @media print { body { padding: 12px; } .print { display: none; } .schedule { font-size: 11px; } }
+    @media print {
+      @page { size: landscape; margin: 10mm; }
+      body { padding: 0; }
+      .print { display: none; }
+      .schedule-wrap { overflow: visible; border-radius: 0; }
+      .schedule { min-width: 0; width: 100%; }
+      .schedule-head, .schedule-body { grid-template-columns: 58px repeat(7, minmax(0, 1fr)); }
+      h1 { font-size: 22px; }
+    }
   </style>
 </head>
 <body>
@@ -595,25 +641,30 @@
     <button class="print" onclick="window.print()">Print / Save PDF</button>
   </div>
   ${accepted.length === 0 ? `<div class="empty">No accepted opportunities yet.</div>` : `
-  <div class="schedule">
-    <div class="day"></div>
-    ${days.map(([, label]) => `<div class="day">${label}</div>`).join("")}
-    ${rows.map(row => `
-      <div class="time">${row.display}</div>
-      ${days.map(() => `<div class="cell"></div>`).join("")}
-    `).join("")}
-    ${days.map(([code], index) => `
-      <div class="day-column" style="grid-column:${index + 2};">
-        ${events.filter(event => event.day === code).map(event => `
-          <div class="event" style="top:${event.top}px;height:${event.height}px;">
-            <strong>${escape(event.title)}</strong>
-            <span>${escape(event.time)}</span>
-            <span>${escape(event.location)}</span>
-            <span>${escape(event.ngo)}</span>
+  <div class="schedule-wrap">
+    <div class="schedule">
+      <div class="schedule-head">
+        <div class="day"></div>
+        ${days.map(([, label]) => `<div class="day">${label}</div>`).join("")}
+      </div>
+      <div class="schedule-body">
+        <div class="times">
+          ${rows.map((row, index) => `<div class="time" style="top:${index * rowHeight}px;">${row.display}</div>`).join("")}
+        </div>
+        ${days.map(([code]) => `
+          <div class="day-column">
+            ${events.filter(event => event.day === code).map(event => `
+              <div class="event" style="top:${event.top}px;height:${event.height}px;">
+                <strong>${escape(event.title)}</strong>
+                <span>${escape(event.time)}</span>
+                <span>${escape(event.location)}</span>
+                <span>${escape(event.ngo)}</span>
+              </div>
+            `).join("")}
           </div>
         `).join("")}
       </div>
-    `).join("")}
+    </div>
   </div>`}
 </body>
 </html>`;
@@ -659,12 +710,22 @@
     function feedbackSection(app) {
       let ngoFeedback = "";
       if (app.volunteer_feedback_id) {
+        const alreadyAdded = Number(app.volunteer_feedback_show_on_profile) === 1;
         ngoFeedback = `
           <div class="received-feedback">
             <strong>NGO endorsement: ${escapeHTML(app.volunteer_feedback_title || "Volunteer feedback")}</strong>
             <div class="rating-line">${Number(app.volunteer_feedback_rating) || 0}/5 rating</div>
             <p>${escapeHTML(app.volunteer_feedback_comment || "")}</p>
             ${app.volunteer_feedback_strengths ? `<small><strong>Strengths:</strong> ${escapeHTML(app.volunteer_feedback_strengths)}</small>` : ""}
+            <div style="margin-top:12px;">
+              ${alreadyAdded ? `
+                <span class="field-badge"><i class="fas fa-circle-check"></i> Added to profile</span>
+              ` : `
+                <button class="feedback-button" type="button" onclick="addEndorsementToProfile(${app.volunteer_feedback_id})">
+                  <i class="fas fa-user-plus"></i> Add to Profile
+                </button>
+              `}
+            </div>
           </div>
         `;
       }
@@ -672,9 +733,20 @@
       if (!canLeaveOpportunityFeedback(app) && !ngoFeedback) return "";
 
       const existing = Boolean(app.opportunity_feedback_id);
+      const submittedNotice = existing ? `
+        <div class="feedback-panel">
+          <div class="received-feedback">
+            <strong>Your opportunity feedback was submitted.</strong>
+            <p>The NGO can now see it. Feedback can only be submitted once.</p>
+          </div>
+          ${ngoFeedback}
+        </div>
+      ` : "";
+      if (submittedNotice) return submittedNotice;
+
       const form = canLeaveOpportunityFeedback(app) ? `
         <div class="feedback-panel">
-          <h3>${existing ? "Update your opportunity feedback" : "Share your opportunity feedback"}</h3>
+          <h3>Share your opportunity feedback</h3>
           <div class="feedback-grid">
             <select id="rating-${app.application_id}" aria-label="Rating">
               ${[5, 4, 3, 2, 1].map(value => `
@@ -690,7 +762,7 @@
           <textarea id="comment-${app.application_id}" maxlength="1200"
                     placeholder="Tell future volunteers what the experience was like.">${escapeHTML(app.opportunity_feedback_comment || "")}</textarea>
           <button class="feedback-button" type="button" onclick="saveOpportunityFeedback(${app.application_id})">
-            <i class="fas fa-paper-plane"></i> ${existing ? "Update Feedback" : "Submit Feedback"}
+            <i class="fas fa-paper-plane"></i> Submit Feedback
           </button>
           ${ngoFeedback}
         </div>
@@ -722,13 +794,33 @@
       }
     }
 
+    async function addEndorsementToProfile(feedbackId) {
+      try {
+        const response = await fetch(`/api/feedback/volunteer/${feedbackId}/profile`, {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not add endorsement to profile.");
+        alert(data.message || "Endorsement added to profile.");
+        await loadApplications();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
     function renderApplications() {
       const container = document.getElementById("history-container");
       const filtered = activeFilter === "all"
         ? applications
         : applications.filter(app => app.status === activeFilter);
+      const completedHours = applications.reduce((total, app) => {
+        if (app.attendance_confirmed !== "YES") return total;
+        return total + (Number(app.hours_completed) || 0);
+      }, 0);
 
       document.getElementById("application-count").textContent = applications.length;
+      document.getElementById("completed-hours-count").textContent = formatHours(completedHours);
 
       if (filtered.length === 0) {
         const message = activeFilter === "all"
@@ -764,8 +856,8 @@
               <span><i class="fas fa-calendar-week"></i>${formatScheduleDays(app.schedule_days)}</span>
               <span><i class="fas fa-business-time"></i>${formatTime(app.start_time)} - ${formatTime(app.end_time)}</span>
               <span><i class="fas fa-location-dot"></i>${escapeHTML(app.location || "No location")}</span>
-              <span><i class="fas fa-clock"></i>${app.hours_required || 0} hours required</span>
-              <span><i class="fas fa-award"></i>${app.attendance_confirmed === "YES" ? `${app.hours_completed || 0} hours completed` : "Hours not confirmed yet"}</span>
+              <span><i class="fas fa-clock"></i>${formatHours(app.hours_required)} hours required</span>
+              <span><i class="fas fa-award"></i>${app.attendance_confirmed === "YES" ? `${formatHours(app.hours_completed)} hours completed` : "Hours not confirmed yet"}</span>
             </div>
           </div>
           <div class="card-actions">
@@ -831,9 +923,9 @@
       }
     }
 
-    document.querySelectorAll(".filter-btn").forEach(button => {
+    document.querySelectorAll(".status-filters .filter-btn").forEach(button => {
       button.addEventListener("click", () => {
-        document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+        document.querySelectorAll(".status-filters .filter-btn").forEach(btn => btn.classList.remove("active"));
         button.classList.add("active");
         activeFilter = button.dataset.filter;
         renderApplications();

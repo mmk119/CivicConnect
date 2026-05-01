@@ -2,9 +2,7 @@
 node_modules/
 backend/.env
 
-backend/logs/error.log
-backend/logs/server.log
-logs/*.log
-backend/*.log
+*.log
+logs/
+backend/logs/
 package-lock.json
-backend\server.log

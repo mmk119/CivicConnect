@@ -298,15 +298,21 @@
 
     /* ── SKILLS & EXPERIENCES ──────────── */
     .skills-container,
-    .experiences-container {
+    .experiences-container,
+    .endorsements-container {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 12px;
       margin-bottom: 25px;
     }
 
+    .endorsements-container {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
     .skill-tag,
-    .exp-item {
+    .exp-item,
+    .endorsement-card {
       background: linear-gradient(135deg, #e3f2fd, #f0f7ff);
       border: 2px solid #007BFF;
       color: #0056b3;
@@ -321,6 +327,25 @@
       justify-content: center;
       gap: 8px;
       min-height: 45px;
+    }
+
+    .endorsement-card {
+      display: block;
+      text-align: left;
+      border-radius: 12px;
+      color: #0d2b45;
+      line-height: 1.55;
+    }
+
+    .endorsement-card strong {
+      display: block;
+      color: #0056b3;
+      margin-bottom: 6px;
+    }
+
+    .endorsement-card small {
+      color: #4a6274;
+      font-weight: 600;
     }
 
     .skill-tag i,
@@ -701,6 +726,17 @@
           </div>
         </div>
 
+        <!-- ENDORSEMENTS SECTION -->
+        <h3 class="section-title">
+          <i class="fas fa-comment-dots"></i> Profile Endorsements
+        </h3>
+        <div class="endorsements-container" id="endorsements">
+          <div class="empty-state">
+            <i class="fas fa-comment-slash"></i>
+            <p>No endorsements added to your profile yet.</p>
+          </div>
+        </div>
+
         <!-- ACTION BUTTONS -->
         <div class="action-buttons">
           <button id="edit-btn" class="btn-modern btn-primary-modern">
@@ -826,6 +862,15 @@
       setTimeout(() => toast.remove(), 4000);
     }
 
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     document.addEventListener("DOMContentLoaded", async function () {
       const token = localStorage.getItem('token');
       const user_id = localStorage.getItem('user_id');
@@ -848,6 +893,7 @@
       const preferencesField = document.getElementById("preferences");
       const skillsContainer = document.getElementById("skills");
       const experiencesContainer = document.getElementById("experiences");
+      const endorsementsContainer = document.getElementById("endorsements");
       const uploadPhotoInput = document.getElementById("upload-photo");
       const profilePicture = document.getElementById("profile-picture");
       const editModal = new bootstrap.Modal(document.getElementById("editModal"));
@@ -873,7 +919,7 @@
           phoneField.textContent = data.phone || 'Not provided';
           cityField.textContent = data.city || 'Not provided';
           dobField.textContent = data.dateOfBirth || 'Not provided';
-          totalHoursField.textContent = `${data.totalHours || 0} hours`;
+          totalHoursField.textContent = `${formatHours(data.totalHours)} hours`;
           const availabilityDays = (data.availableDays || []).join(', ');
           const availabilityTime = data.availableStartTime && data.availableEndTime
             ? `${data.availableStartTime} - ${data.availableEndTime}`
@@ -894,7 +940,7 @@
           // Skills
           if (data.skills && data.skills.length > 0) {
             skillsContainer.innerHTML = data.skills
-              .map(skill => `<div class="skill-tag"><i class="fas fa-check-circle"></i> ${skill}</div>`)
+              .map(skill => `<div class="skill-tag"><i class="fas fa-check-circle"></i> ${escapeHTML(skill)}</div>`)
               .join("");
           } else {
             skillsContainer.innerHTML = `
@@ -907,13 +953,31 @@
           // Experiences
           if (data.experiences && data.experiences.length > 0) {
             experiencesContainer.innerHTML = data.experiences
-              .map(exp => `<div class="exp-item"><i class="fas fa-award"></i> ${exp}</div>`)
+              .map(exp => `<div class="exp-item"><i class="fas fa-award"></i> ${escapeHTML(exp)}</div>`)
               .join("");
           } else {
             experiencesContainer.innerHTML = `
               <div class="empty-state">
                 <i class="fas fa-history"></i>
                 <p>No experiences listed yet. Share your journey!</p>
+              </div>`;
+          }
+
+          if (data.profileEndorsements && data.profileEndorsements.length > 0) {
+            endorsementsContainer.innerHTML = data.profileEndorsements.map(item => `
+              <div class="endorsement-card">
+                <strong>${escapeHTML(item.endorsement_title || "Volunteer endorsement")}</strong>
+                <div>${Number(item.rating) || 0}/5 rating</div>
+                <p>${escapeHTML(item.comment || "")}</p>
+                ${item.strengths ? `<small>Strengths: ${escapeHTML(item.strengths)}</small><br>` : ""}
+                <small>${escapeHTML(item.ngo_name || "NGO")} | ${escapeHTML(item.opportunity_title || "Opportunity")}</small>
+              </div>
+            `).join("");
+          } else {
+            endorsementsContainer.innerHTML = `
+              <div class="empty-state">
+                <i class="fas fa-comment-slash"></i>
+                <p>No endorsements added to your profile yet.</p>
               </div>`;
           }
         } catch (error) {
@@ -1047,3 +1111,7 @@
 </body>
 
 </html>
+      function formatHours(value) {
+        const hours = Number(value) || 0;
+        return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      }

@@ -61,6 +61,21 @@ function getDateOnly(value) {
     return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
+function isValidTimeValue(value) {
+    return /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(String(value || ""));
+}
+
+function minutesFromTime(value) {
+    if (!isValidTimeValue(value)) return null;
+    const [hours, minutes] = String(value).split(":").map(Number);
+    return hours * 60 + minutes;
+}
+
+function formatHours(value) {
+    const hours = Number(value) || 0;
+    return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 function calculateScheduleHours() {
     const startDate = getDateOnly(document.getElementById("start_date").value);
     const endDate = getDateOnly(document.getElementById("end_date").value);
@@ -69,19 +84,24 @@ function calculateScheduleHours() {
     const selectedDays = getSelectedScheduleDays();
 
     if (!startDate || !endDate || selectedDays.length === 0 || !startTime || !endTime) {
-        return { hours: 0, message: "Choose dates, days, and timing" };
+        return { hours: 0, message: "Choose dates, days, and timing", breakdown: "" };
     }
 
     if (endDate < startDate) {
-        return { hours: 0, message: "End date must be after start date" };
+        return { hours: 0, message: "End date must be the same as or after start date", breakdown: "" };
     }
 
-    const [startHour, startMinute] = startTime.split(":").map(Number);
-    const [endHour, endMinute] = endTime.split(":").map(Number);
-    const minutesPerSession = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+    const startMinutes = minutesFromTime(startTime);
+    const endMinutes = minutesFromTime(endTime);
+
+    if (startMinutes === null || endMinutes === null) {
+        return { hours: 0, message: "Start and end time must be valid", breakdown: "" };
+    }
+
+    const minutesPerSession = endMinutes - startMinutes;
 
     if (minutesPerSession <= 0) {
-        return { hours: 0, message: "End time must be after start time" };
+        return { hours: 0, message: "End time must be after start time", breakdown: "" };
     }
 
     const jsDayToCode = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -93,14 +113,15 @@ function calculateScheduleHours() {
     }
 
     if (sessions === 0) {
-        return { hours: 0, message: "No selected weekdays fall inside this date range" };
+        return { hours: 0, message: "No selected weekdays fall inside this date range", breakdown: "" };
     }
 
     const duration = Math.round((minutesPerSession / 60) * 100) / 100;
     const hours = Math.round((sessions * duration) * 100) / 100;
     return {
         hours,
-        message: `${hours} total hours (${sessions} session${sessions === 1 ? "" : "s"} x ${duration} hrs)`
+        message: `${formatHours(hours)} total volunteer hours`,
+        breakdown: `${sessions} matching session${sessions === 1 ? "" : "s"} x ${formatHours(duration)} hour${duration === 1 ? "" : "s"} per session`
     };
 }
 
@@ -108,6 +129,8 @@ function updateHoursPreview() {
     const result = calculateScheduleHours();
     document.getElementById("hours_required").value = result.hours || "";
     document.getElementById("hoursPreview").textContent = result.message;
+    const breakdown = document.getElementById("hoursBreakdown");
+    if (breakdown) breakdown.textContent = result.breakdown || "";
     return result;
 }
 
@@ -209,7 +232,7 @@ function loadOpportunities() {
                 const li = document.createElement("li");
                 li.className = "list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2";
                 li.innerHTML = `
-                    <span>${op.title} - ${op.field || "No field"} - ${formatScheduleDays(op.schedule_days)} ${formatTime(op.start_time)}-${formatTime(op.end_time)} - ${op.hours_required || 0} hours - ${new Date(op.start_date).toDateString()} - ${op.location}<br>
+                    <span>${op.title} - ${op.field || "No field"} - ${formatScheduleDays(op.schedule_days)} ${formatTime(op.start_time)}-${formatTime(op.end_time)} - ${formatHours(op.hours_required)} hours - ${new Date(op.start_date).toDateString()} - ${op.location}<br>
                     <small>Applicants: ${op.pending_count || 0} pending / ${op.accepted_count || 0} accepted / ${op.rejected_count || 0} rejected | Capacity: ${op.accepted_count || 0}/${op.capacity || 0}</small></span>
                     <span class="d-flex flex-wrap gap-2">
                         <button class="btn btn-info btn-sm" onclick="viewApplicants(${op.opportunity_id}, '${encodeURIComponent(op.title || "Opportunity")}')">
@@ -241,7 +264,6 @@ function submitOpportunity() {
     const description = document.getElementById("description").value.trim();
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
-    const hoursRequired = Number(document.getElementById("hours_required").value);
     const capacity = Number(document.getElementById("capacity").value);
     const location = document.getElementById("location").value.trim();
     const applicationQuestions = getApplicationQuestions();
@@ -249,6 +271,7 @@ function submitOpportunity() {
     const startTime = document.getElementById("start_time").value;
     const endTime = document.getElementById("end_time").value;
     const scheduleResult = updateHoursPreview();
+    const hoursRequired = scheduleResult.hours;
 
     if (!title || !field || !description || !startDate || !endDate || !capacity || !location || scheduleDays.length === 0 || !startTime || !endTime) {
         alert("Please fill in all fields before submitting.");
@@ -413,7 +436,6 @@ function showPreview() {
     const description = document.getElementById("description").value.trim();
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
-    const hoursRequired = Number(document.getElementById("hours_required").value);
     const capacity = Number(document.getElementById("capacity").value);
     const location = document.getElementById("location").value.trim();
     const applicationQuestions = getApplicationQuestions();
@@ -421,6 +443,7 @@ function showPreview() {
     const startTime = document.getElementById("start_time").value;
     const endTime = document.getElementById("end_time").value;
     const scheduleResult = updateHoursPreview();
+    const hoursRequired = scheduleResult.hours;
 
     if (!title || !field || !description || !startDate || !endDate || !capacity || !location || scheduleDays.length === 0 || !startTime || !endTime) {
         alert("Please fill in all required fields before previewing.");

@@ -151,6 +151,8 @@ function cleanText(value, maxLength) {
     return String(value || '').trim().slice(0, maxLength);
 }
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -259,10 +261,20 @@ function fileFilterFor(allowedTypes) {
 // ===== AUTH ROUTES =====
 
 app.post('/api/register', async (req, res) => {
-    const { name, email, password, role, volunteer, ngo } = req.body;
+    const name = cleanText(req.body.name, 120);
+    const email = cleanText(req.body.email, 254).toLowerCase();
+    const { password, role, volunteer, ngo } = req.body;
 
     if (!name || !email || !password || !role) {
         return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'A valid email address is required.' });
+    }
+
+    if (String(password).length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters.' });
     }
 
     let connection;
@@ -363,7 +375,6 @@ app.get('/api/verify-email', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-    console.log('Login request body:', req.body);
     try {
         const [users] = await db.execute('SELECT * FROM Users WHERE email = ?', [email]);
         if (users.length === 0) {
@@ -409,11 +420,17 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/request-password-reset', async (req, res) => {
-    const { email } = req.body;
+    const email = cleanText(req.body.email, 254).toLowerCase();
+    const genericMessage = 'If an account exists for that email, a password reset link has been sent.';
+
+    if (!email || !emailRegex.test(email)) {
+        return res.status(400).json({ error: 'A valid email address is required.' });
+    }
+
     try {
         const [users] = await db.execute('SELECT * FROM Users WHERE email = ?', [email]);
         if (users.length === 0) {
-            return res.status(404).json({ error: 'Email not found' });
+            return res.status(200).json({ message: genericMessage });
         }
 
         const user = users[0];
@@ -446,7 +463,7 @@ app.post('/api/request-password-reset', async (req, res) => {
             `
         });
 
-        res.status(200).json({ message: 'Password reset link sent to your email.' });
+        res.status(200).json({ message: genericMessage });
     } catch (err) {
         console.error('Error requesting password reset:', err);
         res.status(500).json({ error: 'Internal server error' });
@@ -457,20 +474,16 @@ app.post('/api/request-password-reset', async (req, res) => {
 app.post('/api/reset-password', async (req, res) => {
     const { token, newPassword } = req.body;
 
-    if (!token || !newPassword) {
-        return res.status(400).json({ error: 'Token and new password are required.' });
+    if (!token || !newPassword || String(newPassword).length < 8) {
+        return res.status(400).json({ error: 'A valid token and password of at least 8 characters are required.' });
     }
 
     try {
         const now = Date.now();
-        console.log('Reset attempt — token:', token, 'now:', now);
-
         const [users] = await db.execute(
-            'SELECT * FROM users WHERE reset_token = ? AND CAST(reset_token_expiry AS UNSIGNED) > ?',
+            'SELECT * FROM Users WHERE reset_token = ? AND CAST(reset_token_expiry AS UNSIGNED) > ?',
             [token, now]
         );
-
-        console.log('Users matched:', users.length);
 
         if (users.length === 0) {
             return res.status(400).json({ error: 'Invalid or expired reset token.' });
@@ -479,7 +492,7 @@ app.post('/api/reset-password', async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         await db.execute(
-            'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE user_id = ?',
+            'UPDATE Users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE user_id = ?',
             [hashedPassword, users[0].user_id]
         );
 
@@ -517,7 +530,13 @@ function parseScheduleDays(value) {
 }
 
 function isValidTime(value) {
-    return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''));
+    return /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(String(value || ''));
+}
+
+function minutesFromTime(value) {
+    if (!isValidTime(value)) return null;
+    const [hours, minutes] = String(value).split(':').map(Number);
+    return hours * 60 + minutes;
 }
 
 function dateFromInput(value) {
@@ -532,9 +551,11 @@ function calculateScheduleHours(startDateValue, endDateValue, days, startTime, e
     const endDate = dateFromInput(endDateValue);
     if (!startDate || !endDate || endDate < startDate) return null;
 
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    const minutesPerSession = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+    const startMinutes = minutesFromTime(startTime);
+    const endMinutes = minutesFromTime(endTime);
+    if (startMinutes === null || endMinutes === null) return null;
+
+    const minutesPerSession = endMinutes - startMinutes;
     if (minutesPerSession <= 0) return null;
 
     const jsDayToCode = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -547,6 +568,17 @@ function calculateScheduleHours(startDateValue, endDateValue, days, startTime, e
 
     if (sessions < 1) return null;
     return Math.round((sessions * minutesPerSession / 60) * 100) / 100;
+}
+
+function normalizeHours(value) {
+    const hours = Number(value);
+    if (!Number.isFinite(hours)) return null;
+    return Math.round(hours * 100) / 100;
+}
+
+function formatHours(value) {
+    const hours = normalizeHours(value) || 0;
+    return Number.isInteger(hours) ? String(hours) : String(hours).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 // FIX 2: /api/opportunities/search MUST be before /api/opportunities/:id
@@ -611,10 +643,7 @@ app.get('/api/opportunities/all', async (req, res) => {
             ORDER BY o.start_date ASC
         `, volunteer_id ? [volunteer_id, volunteer_id] : []);
 
-        res.json(opportunities.map(opportunity => ({
-            ...opportunity,
-            is_good_match: isOpportunityGoodMatch(opportunity, volunteerProfile) ? 1 : 0
-        })));
+        res.json(opportunities);
     } catch (err) {
         console.error("Error fetching opportunities:", err);
         res.status(500).json({ error: "Failed to fetch opportunities." });
@@ -1152,13 +1181,17 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
             [status, application_id]
         );
 
-        const transporter = await createTransporter();
-        await transporter.sendMail({
-            from: `CivicConnect <${process.env.EMAIL_USER}>`,
-            to: application[0].email,
-            subject: `Application ${status.toUpperCase()}`,
-            html: `<p>Dear ${application[0].name},</p><p>Your application has been <strong>${status}</strong>.</p>`
-        });
+        try {
+            const transporter = await createTransporter();
+            await transporter.sendMail({
+                from: `CivicConnect <${process.env.EMAIL_USER}>`,
+                to: application[0].email,
+                subject: `Application ${status.toUpperCase()}`,
+                html: `<p>Dear ${escapeHtml(application[0].name)},</p><p>Your application has been <strong>${status}</strong>.</p>`
+            });
+        } catch (emailErr) {
+            console.error('Application status email failed:', emailErr.message);
+        }
 
         res.json({ message: `Application ${status} successfully.` });
     } catch (err) {
@@ -1173,10 +1206,10 @@ app.patch('/api/applications/:application_id/attendance', authenticateToken, asy
     }
 
     const { application_id } = req.params;
-    const requestedHours = Number(req.body.hours_completed);
+    const requestedHours = normalizeHours(req.body.hours_completed);
 
-    if (!Number.isInteger(requestedHours) || requestedHours < 1) {
-        return res.status(400).json({ error: 'Completed hours must be a positive whole number.' });
+    if (!requestedHours || requestedHours < 0.25) {
+        return res.status(400).json({ error: 'Completed hours must be at least 0.25.' });
     }
 
     try {
@@ -1206,7 +1239,7 @@ app.patch('/api/applications/:application_id/attendance', authenticateToken, asy
             return res.status(409).json({ error: 'Attendance has already been confirmed for this application.' });
         }
 
-        const maxHours = Number(application.hours_required) || requestedHours;
+        const maxHours = normalizeHours(application.hours_required) || requestedHours;
         if (requestedHours > maxHours) {
             return res.status(400).json({ error: `Completed hours cannot be more than ${maxHours}.` });
         }
@@ -1270,7 +1303,8 @@ app.get('/api/volunteer/applications', authenticateToken, async (req, res) => {
                 vfb.rating AS volunteer_feedback_rating,
                 vfb.endorsement_title AS volunteer_feedback_title,
                 vfb.comment AS volunteer_feedback_comment,
-                vfb.strengths AS volunteer_feedback_strengths
+                vfb.strengths AS volunteer_feedback_strengths,
+                COALESCE(vfb.show_on_profile, 0) AS volunteer_feedback_show_on_profile
             FROM Applications a
             JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
             JOIN NGOs n ON o.ngo_id = n.ngo_id
@@ -1321,11 +1355,16 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
                 a.hours_completed,
                 a.attendance_confirmed,
                 a.attendance_confirmed_at,
+                ofb.opportunity_feedback_id,
+                ofb.rating AS opportunity_feedback_rating,
+                ofb.comment AS opportunity_feedback_comment,
+                ofb.impact_story AS opportunity_feedback_impact_story,
                 vfb.volunteer_feedback_id,
                 vfb.rating AS volunteer_feedback_rating,
                 vfb.endorsement_title AS volunteer_feedback_title,
                 vfb.comment AS volunteer_feedback_comment,
                 vfb.strengths AS volunteer_feedback_strengths,
+                COALESCE(vfb.show_on_profile, 0) AS volunteer_feedback_show_on_profile,
                 o.title AS opportunity_name,
                 o.end_date,
                 o.hours_required,
@@ -1344,11 +1383,32 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
                     JOIN Opportunities o2 ON a2.opportunity_id = o2.opportunity_id
                     WHERE a2.volunteer_id = v.volunteer_id
                       AND a2.attendance_confirmed = 'YES'
-                ) AS completed_history
+                ) AS completed_history,
+                (
+                    SELECT GROUP_CONCAT(
+                        CONCAT_WS('~~',
+                            vfbp.endorsement_title,
+                            vfbp.rating,
+                            vfbp.comment,
+                            COALESCE(vfbp.strengths, ''),
+                            np.name,
+                            op.title
+                        )
+                        ORDER BY vfbp.created_at DESC
+                        SEPARATOR '||'
+                    )
+                    FROM VolunteerFeedback vfbp
+                    JOIN NGOs np ON vfbp.ngo_id = np.ngo_id
+                    JOIN Applications ap ON vfbp.application_id = ap.application_id
+                    JOIN Opportunities op ON ap.opportunity_id = op.opportunity_id
+                    WHERE vfbp.volunteer_id = v.volunteer_id
+                      AND vfbp.show_on_profile = 1
+                ) AS profile_endorsements
             FROM Applications a
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
             JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            LEFT JOIN OpportunityFeedback ofb ON a.application_id = ofb.application_id
             LEFT JOIN VolunteerFeedback vfb ON a.application_id = vfb.application_id
             WHERE a.opportunity_id = ?
             ORDER BY a.applied_at DESC
@@ -1391,14 +1451,17 @@ app.post('/api/feedback/opportunity/:application_id', authenticateToken, async (
             return res.status(400).json({ error: 'Feedback opens after the NGO confirms your attendance.' });
         }
 
+        const [existing] = await db.execute(
+            'SELECT opportunity_feedback_id FROM OpportunityFeedback WHERE application_id = ?',
+            [application.application_id]
+        );
+        if (existing.length > 0) {
+            return res.status(409).json({ error: 'You already submitted feedback for this opportunity.' });
+        }
+
         await db.execute(`
             INSERT INTO OpportunityFeedback (application_id, volunteer_id, opportunity_id, rating, comment, impact_story)
             VALUES (?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                rating = VALUES(rating),
-                comment = VALUES(comment),
-                impact_story = VALUES(impact_story),
-                updated_at = CURRENT_TIMESTAMP
         `, [application.application_id, application.volunteer_id, application.opportunity_id, rating, comment, impactStory || null]);
 
         res.json({ message: 'Your opportunity feedback was saved.' });
@@ -1439,21 +1502,58 @@ app.post('/api/feedback/volunteer/:application_id', authenticateToken, async (re
             return res.status(400).json({ error: 'Volunteer feedback opens after attendance is confirmed.' });
         }
 
+        const [existing] = await db.execute(
+            'SELECT volunteer_feedback_id FROM VolunteerFeedback WHERE application_id = ?',
+            [application.application_id]
+        );
+        if (existing.length > 0) {
+            return res.status(409).json({ error: 'You already submitted feedback for this volunteer.' });
+        }
+
         await db.execute(`
             INSERT INTO VolunteerFeedback (application_id, ngo_id, volunteer_id, rating, endorsement_title, comment, strengths)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                rating = VALUES(rating),
-                endorsement_title = VALUES(endorsement_title),
-                comment = VALUES(comment),
-                strengths = VALUES(strengths),
-                updated_at = CURRENT_TIMESTAMP
         `, [application.application_id, req.user.ngo_id, application.volunteer_id, rating, title, comment, strengths || null]);
 
         res.json({ message: 'Volunteer feedback was saved.' });
     } catch (err) {
         console.error('Error saving volunteer feedback:', err);
         res.status(500).json({ error: 'Failed to save volunteer feedback.' });
+    }
+});
+
+app.patch('/api/feedback/volunteer/:feedback_id/profile', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).json({ error: 'Only volunteers can add endorsements to their profile.' });
+    }
+
+    const feedbackId = Number(req.params.feedback_id);
+    if (!Number.isInteger(feedbackId) || feedbackId < 1) {
+        return res.status(400).json({ error: 'Valid feedback ID is required.' });
+    }
+
+    try {
+        const [rows] = await db.execute(`
+            SELECT vfb.volunteer_feedback_id
+            FROM VolunteerFeedback vfb
+            JOIN Volunteers v ON vfb.volunteer_id = v.volunteer_id
+            WHERE vfb.volunteer_feedback_id = ?
+              AND v.user_id = ?
+        `, [feedbackId, req.user.user_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Endorsement not found for this volunteer.' });
+        }
+
+        await db.execute(
+            'UPDATE VolunteerFeedback SET show_on_profile = 1 WHERE volunteer_feedback_id = ?',
+            [feedbackId]
+        );
+
+        res.json({ message: 'Endorsement added to your profile.' });
+    } catch (err) {
+        console.error('Error adding endorsement to profile:', err);
+        res.status(500).json({ error: 'Failed to add endorsement to profile.' });
     }
 });
 
@@ -1513,22 +1613,23 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', authenticateToken, requireAdmin, upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded." });
     res.json({ message: "File uploaded successfully!", filename: req.file.filename });
 });
 
-app.get('/api/files', (req, res) => {
+app.get('/api/files', authenticateToken, requireAdmin, (req, res) => {
     fs.readdir(generalUploadsDir, (err, files) => {
         if (err) return res.status(500).json({ error: "Failed to retrieve files." });
         res.json(files);
     });
 });
 
-app.delete('/api/files/:filename', (req, res) => {
+app.delete('/api/files/:filename', authenticateToken, requireAdmin, (req, res) => {
     const filename = path.basename(req.params.filename);
-    const filePath = path.join(generalUploadsDir, filename);
-    if (!filePath.startsWith(generalUploadsDir)) {
+    const uploadDir = path.resolve(generalUploadsDir);
+    const filePath = path.resolve(uploadDir, filename);
+    if (!filePath.startsWith(uploadDir + path.sep)) {
         return res.status(400).json({ error: "Invalid filename." });
     }
     if (fs.existsSync(filePath)) {
@@ -1849,10 +1950,7 @@ app.get('/api/admin/opportunities', authenticateToken, requireAdmin, async (req,
               AND (? = '' OR (? = 'upcoming' AND o.end_date >= CURDATE()) OR (? = 'passed' AND o.end_date < CURDATE()))
             ORDER BY o.created_at DESC
         `, [search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, field, field, status, status, status]);
-        res.json(opportunities.map(opportunity => ({
-            ...opportunity,
-            is_good_match: isOpportunityGoodMatch(opportunity, volunteerProfile) ? 1 : 0
-        })));
+        res.json(opportunities);
     } catch (err) {
         console.error('Admin opportunities error:', err);
         res.status(500).json({ error: 'Failed to fetch opportunities.' });
@@ -2226,6 +2324,25 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
         if (results.length === 0) return res.status(404).json({ error: 'User not found' });
 
         const d = results[0];
+        const [endorsements] = d.volunteer_id ? await db.execute(`
+            SELECT
+                vfb.volunteer_feedback_id,
+                vfb.rating,
+                vfb.endorsement_title,
+                vfb.comment,
+                vfb.strengths,
+                n.name AS ngo_name,
+                o.title AS opportunity_title,
+                vfb.created_at
+            FROM VolunteerFeedback vfb
+            JOIN NGOs n ON vfb.ngo_id = n.ngo_id
+            JOIN Applications a ON vfb.application_id = a.application_id
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            WHERE vfb.volunteer_id = ?
+              AND vfb.show_on_profile = 1
+            ORDER BY vfb.created_at DESC
+        `, [d.volunteer_id]) : [[]];
+
         res.json({
             name: d.name,
             email: d.email,
@@ -2240,7 +2357,8 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
             preferredCities: d.preferred_cities ? d.preferred_cities.split(',').map(s => s.trim()) : [],
             imageUrl: d.image_url || 'default-profile.jpg',
             dateOfBirth: d.Date_of_Birth ? new Date(d.Date_of_Birth).toLocaleDateString() : 'Not provided',
-            totalHours: Number(d.total_hours) || 0
+            totalHours: Number(d.total_hours) || 0,
+            profileEndorsements: endorsements
         });
     } catch (err) {
         console.error('Error fetching profile:', err);
@@ -2390,7 +2508,7 @@ app.get('/api/certificates/:application_id', authenticateToken, async (req, res)
     <h1>Certificate of Volunteering</h1>
     <p>This certifies that</p>
     <div class="name">${escapeHtml(cleanText(certificate.volunteer_name, 200))}</div>
-    <p>completed <strong>${Number(certificate.hours_completed) || 0} volunteer hours</strong> for <strong>${escapeHtml(cleanText(certificate.opportunity_title, 200))}</strong> with <strong>${escapeHtml(cleanText(certificate.ngo_name, 200))}</strong>.</p>
+    <p>completed <strong>${formatHours(certificate.hours_completed)} volunteer hours</strong> for <strong>${escapeHtml(cleanText(certificate.opportunity_title, 200))}</strong> with <strong>${escapeHtml(cleanText(certificate.ngo_name, 200))}</strong>.</p>
     <p class="meta">Opportunity dates: ${String(certificate.start_date).slice(0, 10)} to ${String(certificate.end_date).slice(0, 10)}</p>
     <div class="signatures">
       <div class="signature">${escapeHtml(cleanText(certificate.ngo_name, 200))}</div>
@@ -2441,7 +2559,7 @@ app.get('/api/certificates/verify/:certificate_id', async (req, res) => {
             volunteer_name: certificate.volunteer_name,
             opportunity_title: certificate.opportunity_title,
             ngo_name: certificate.ngo_name,
-            hours_completed: Number(certificate.hours_completed) || 0,
+            hours_completed: normalizeHours(certificate.hours_completed) || 0,
             issued_at: certificate.attendance_confirmed_at
         });
     } catch (err) {

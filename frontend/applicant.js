@@ -29,6 +29,11 @@ function formatTime(value) {
   return value ? String(value).slice(0, 5) : "Time TBD";
 }
 
+function formatHours(value) {
+  const hours = Number(value) || 0;
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 function isOpportunityFinished(endDateValue) {
   if (!endDateValue) return false;
   const endDate = new Date(endDateValue);
@@ -56,6 +61,14 @@ function parseApplicationAnswers(value) {
   } catch {
     return [];
   }
+}
+
+function parseProfileEndorsements(value) {
+  if (!value) return [];
+  return String(value).split("||").filter(Boolean).map(item => {
+    const [title, rating, comment, strengths, ngo, opportunity] = item.split("~~");
+    return { title, rating, comment, strengths, ngo, opportunity };
+  });
 }
 
 const applicantParams = new URLSearchParams(window.location.search);
@@ -148,6 +161,7 @@ function renderApplicants() {
         const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
         const confirmed = applicant.attendance_confirmed === "YES";
         const completedHistory = parseCompletedHistory(applicant.completed_history);
+        const profileEndorsements = parseProfileEndorsements(applicant.profile_endorsements);
         const hoursRequired = Number(applicant.hours_required) || 0;
         const applicationAnswers = parseApplicationAnswers(applicant.application_answers);
 
@@ -171,14 +185,14 @@ function renderApplicants() {
         if (confirmed) {
           attendanceHTML = `
             <div class="alert alert-success mt-3 mb-0">
-              Attendance confirmed. ${Number(applicant.hours_completed) || 0} hours were added to this volunteer.
+              Attendance confirmed. ${formatHours(applicant.hours_completed)} hours were added to this volunteer.
             </div>`;
         } else if (status === "accepted") {
           attendanceHTML = `
             <div class="border rounded-3 p-3 mt-3 bg-light">
               <label class="form-label fw-bold" for="hours-${applicant.id}">Completed hours</label>
               <div class="d-flex flex-wrap gap-2">
-                <input id="hours-${applicant.id}" class="form-control" type="number" min="1"
+                <input id="hours-${applicant.id}" class="form-control" type="number" min="0.25" step="0.25"
                        max="${hoursRequired || 999}" value="${hoursRequired || 1}" style="max-width: 160px;">
                 <button class="btn btn-primary"
                         onclick="confirmAttendance(${applicant.id})">
@@ -192,18 +206,24 @@ function renderApplicants() {
         let feedbackHTML = "";
         if (confirmed) {
           const existing = Boolean(applicant.volunteer_feedback_id);
-          feedbackHTML = `
+          feedbackHTML = existing ? `
+            <div class="border rounded-3 p-3 mt-3 bg-white">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <strong>Volunteer feedback submitted</strong>
+              </div>
+              <small class="text-muted">This endorsement was sent to the volunteer. Feedback can only be submitted once.</small>
+            </div>`
+          : `
             <div class="border rounded-3 p-3 mt-3 bg-white">
               <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                <strong>${existing ? "Update volunteer endorsement" : "Leave volunteer feedback"}</strong>
-                ${existing ? `<span class="badge bg-info text-dark">${Number(applicant.volunteer_feedback_rating) || 0}/5 rating</span>` : ""}
+                <strong>Leave volunteer feedback</strong>
               </div>
               <div class="row g-2">
                 <div class="col-md-3">
                   <label class="form-label" for="vol-rating-${applicant.id}">Rating</label>
                   <select id="vol-rating-${applicant.id}" class="form-select">
                     ${[5, 4, 3, 2, 1].map(value => `
-                      <option value="${value}" ${Number(applicant.volunteer_feedback_rating) === value ? "selected" : ""}>
+                      <option value="${value}">
                         ${value} star${value === 1 ? "" : "s"}
                       </option>
                     `).join("")}
@@ -213,29 +233,60 @@ function renderApplicants() {
                   <label class="form-label" for="vol-title-${applicant.id}">Endorsement title</label>
                   <input id="vol-title-${applicant.id}" class="form-control" maxlength="120"
                          placeholder="Reliable, thoughtful team contributor"
-                         value="${escapeHTML(applicant.volunteer_feedback_title || "")}">
+                         value="">
                 </div>
                 <div class="col-12">
                   <label class="form-label" for="vol-comment-${applicant.id}">Feedback visible to the volunteer</label>
                   <textarea id="vol-comment-${applicant.id}" class="form-control" rows="3" maxlength="1200"
-                            placeholder="Describe their contribution, attitude, reliability, and impact.">${escapeHTML(applicant.volunteer_feedback_comment || "")}</textarea>
+                            placeholder="Describe their contribution, attitude, reliability, and impact."></textarea>
                 </div>
                 <div class="col-12">
                   <label class="form-label" for="vol-strengths-${applicant.id}">Strengths or skills noticed</label>
                   <input id="vol-strengths-${applicant.id}" class="form-control" maxlength="800"
                          placeholder="Communication, punctuality, empathy"
-                         value="${escapeHTML(applicant.volunteer_feedback_strengths || "")}">
+                         value="">
                 </div>
               </div>
               <button class="btn btn-primary mt-3" onclick="saveVolunteerFeedback(${applicant.id})">
-                ${existing ? "Update Feedback" : "Save Feedback"}
+                Save Feedback
               </button>
             </div>`;
         }
 
+        const opportunityFeedbackHTML = applicant.opportunity_feedback_id ? `
+          <div class="border rounded-3 p-3 mt-3 bg-white">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+              <strong>Volunteer's feedback about this opportunity</strong>
+              <span class="badge bg-info text-dark">${Number(applicant.opportunity_feedback_rating) || 0}/5 rating</span>
+            </div>
+            <p class="mb-1">${escapeHTML(applicant.opportunity_feedback_comment || "")}</p>
+            ${applicant.opportunity_feedback_impact_story ? `<small class="text-muted"><strong>Impact note:</strong> ${escapeHTML(applicant.opportunity_feedback_impact_story)}</small>` : ""}
+          </div>
+        ` : "";
+
         const historyHTML = completedHistory.length
           ? `<ul class="mb-0">${completedHistory.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`
           : "<span class='text-muted'>No confirmed previous opportunities yet.</span>";
+        const profileEndorsementsHTML = profileEndorsements.length
+          ? `<div class="mt-3">
+              <strong>Profile endorsements shared by volunteer:</strong>
+              <div class="row g-2 mt-1">
+                ${profileEndorsements.map(item => `
+                  <div class="col-md-6">
+                    <div class="border rounded-3 p-3 bg-light h-100">
+                      <div class="d-flex justify-content-between gap-2">
+                        <strong>${escapeHTML(item.title || "Endorsement")}</strong>
+                        <span class="badge bg-info text-dark">${Number(item.rating) || 0}/5</span>
+                      </div>
+                      <p class="mb-1 mt-2">${escapeHTML(item.comment || "")}</p>
+                      ${item.strengths ? `<small class="text-muted"><strong>Strengths:</strong> ${escapeHTML(item.strengths)}</small><br>` : ""}
+                      <small class="text-muted">${escapeHTML(item.ngo || "NGO")} | ${escapeHTML(item.opportunity || "Opportunity")}</small>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>`
+          : "";
 
         listItem.innerHTML = `
           <div class="applicant-card-header">
@@ -258,12 +309,12 @@ function renderApplicants() {
               <div class="text-muted">Ends: ${formatDate(applicant.end_date)}</div>
               <div class="text-muted">Days: ${formatScheduleDays(applicant.schedule_days)}</div>
               <div class="text-muted">Timing: ${formatTime(applicant.start_time)} - ${formatTime(applicant.end_time)}</div>
-              <div class="text-muted">Required hours: ${hoursRequired}</div>
+              <div class="text-muted">Required hours: ${formatHours(hoursRequired)}</div>
             </div>
             <div class="col-md-6">
               <strong>Volunteer record:</strong>
               <div class="mini-stat-row">
-                <span class="mini-stat">${Number(applicant.total_hours) || 0} confirmed hours</span>
+                <span class="mini-stat">${formatHours(applicant.total_hours)} confirmed hours</span>
                 <span class="mini-stat">${escapeHTML(applicant.skills || "Skills not provided")}</span>
               </div>
             </div>
@@ -273,6 +324,8 @@ function renderApplicants() {
             <strong>Previous completed opportunities:</strong>
             ${historyHTML}
           </div>
+
+          ${profileEndorsementsHTML}
 
           ${applicationAnswers.length ? `
             <div class="mt-3">
@@ -291,6 +344,7 @@ function renderApplicants() {
 
           ${attendanceHTML}
           ${feedbackHTML}
+          ${opportunityFeedbackHTML}
           </div>
         `;
 
@@ -355,8 +409,8 @@ function confirmAttendance(applicationId) {
   const input = document.getElementById(`hours-${applicationId}`);
   const hoursCompleted = Number(input && input.value);
 
-  if (!Number.isInteger(hoursCompleted) || hoursCompleted < 1) {
-    alert("Please enter a valid number of completed hours.");
+  if (!Number.isFinite(hoursCompleted) || hoursCompleted < 0.25) {
+    alert("Please enter completed hours of at least 0.25.");
     return;
   }
 

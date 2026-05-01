@@ -60,6 +60,9 @@ mysql -u root -p civicconnect < migrations\002_saved_opportunities.sql
 mysql -u root -p civicconnect < migrations\003_feedback_moderation.sql
 mysql -u root -p civicconnect < migrations\004_opportunity_schedule.sql
 mysql -u root -p civicconnect < migrations\005_matching_questions_moderation_certificates.sql
+mysql -u root -p civicconnect < migrations\006_decimal_completed_hours.sql
+mysql -u root -p civicconnect < migrations\007_decimal_opportunity_hours.sql
+mysql -u root -p civicconnect < migrations\008_profile_feedback_visibility.sql
 ```
 
 ## Test Accounts

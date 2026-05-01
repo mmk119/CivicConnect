@@ -127,7 +127,7 @@
         .hero {
             margin-top: 88px;
             background: var(--navy);
-            padding: 64px 40px 80px;
+            padding: 58px 40px 68px;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -216,6 +216,7 @@
             border-radius: var(--radius);
             box-shadow: var(--shadow-lg);
             padding: 28px 32px;
+            border: 1px solid rgba(13, 43, 69, 0.08);
         }
 
         .search-card h6 {
@@ -232,6 +233,40 @@
             grid-template-columns: 1fr 1fr 160px 180px;
             gap: 12px;
             align-items: end;
+        }
+
+        .browse-layout {
+            max-width: 1260px;
+            margin: 48px auto 0;
+            padding: 0 24px 80px;
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            gap: 28px;
+            align-items: start;
+            position: relative;
+            z-index: 10;
+        }
+
+        .browse-layout .search-panel {
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            position: sticky;
+            top: 116px;
+        }
+
+        .browse-layout .search-card {
+            padding: 22px;
+        }
+
+        .browse-layout .search-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .browse-layout .main {
+            max-width: none;
+            margin: 0;
+            padding: 0;
         }
 
         .field-group {
@@ -269,7 +304,14 @@
             background: var(--white);
         }
 
-        .search-btn {
+        .search-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-btn,
+        .clear-btn {
+            flex: 1;
             background: var(--teal);
             color: var(--white);
             border: none;
@@ -288,6 +330,20 @@
         }
 
         .search-btn:hover { background: var(--teal-dark); transform: translateY(-1px); }
+
+        .clear-btn {
+            flex: 0 0 46px;
+            padding: 11px;
+            background: var(--white);
+            color: var(--slate);
+            border: 1.5px solid #d0d9e2;
+        }
+
+        .clear-btn:hover {
+            color: var(--teal);
+            border-color: var(--teal);
+            transform: translateY(-1px);
+        }
 
         /* ── MAIN CONTENT ───────────────────────── */
         .main {
@@ -364,9 +420,9 @@
 
         .opp-card {
             background: var(--white);
-            border-radius: var(--radius);
+            border-radius: 14px;
             box-shadow: var(--shadow-sm);
-            border: 1.5px solid transparent;
+            border: 1px solid #e4eaf1;
             overflow: hidden;
             position: relative;
             transition: transform .25s, box-shadow .25s, border-color .25s;
@@ -429,6 +485,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
             margin-bottom: 12px;
         }
 
@@ -520,6 +578,7 @@
             padding: 16px 24px;
             background: var(--sand);
             border-top: 1px solid #eef1f4;
+            margin-top: auto;
         }
 
         .btn-details {
@@ -659,14 +718,28 @@
         /* ── RESPONSIVE ─────────────────────────── */
         @media (max-width: 900px) {
             .search-grid { grid-template-columns: 1fr 1fr; }
+            .browse-layout {
+                display: block;
+                margin-top: 32px;
+                padding: 0 24px 80px;
+            }
+            .browse-layout .search-panel {
+                position: relative;
+                top: auto;
+            }
+            .browse-layout .search-grid { grid-template-columns: 1fr 1fr; }
+            .browse-layout .main { padding-top: 36px; }
             .hero-stats { gap: 28px; }
         }
 
         @media (max-width: 600px) {
             .navbar { padding: 15px 20px; }
             .hero { padding: 48px 24px 64px; }
-            .hero-stats { gap: 20px; }
+            .hero-stats { gap: 20px; align-items: flex-start; }
             .search-grid { grid-template-columns: 1fr; }
+            .browse-layout .search-grid { grid-template-columns: 1fr; }
+            .search-actions { flex-direction: column; }
+            .clear-btn { flex-basis: auto; }
             .search-card { padding: 20px; }
             .cards-grid { grid-template-columns: 1fr; }
             .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -764,11 +837,12 @@
     </div>
 </section>
 
+<div class="browse-layout">
 <!-- SEARCH PANEL -->
 <div class="search-panel">
     <div class="search-card">
         <h6><i class="fa fa-sliders me-2"></i>Filter Opportunities</h6>
-        <div class="search-grid">
+        <form class="search-grid" id="opportunity-search-form">
             <div class="field-group">
                 <label>Keyword</label>
                 <input type="text" id="searchName" placeholder="e.g. teaching, clean-up…">
@@ -794,11 +868,16 @@
             </div>
             <div class="field-group">
                 <label>&nbsp;</label>
-                <button class="search-btn" onclick="filterOpportunities()">
-                    <i class="fa fa-magnifying-glass"></i> Search
-                </button>
+                <div class="search-actions">
+                    <button class="search-btn" type="submit">
+                        <i class="fa fa-magnifying-glass"></i> Search
+                    </button>
+                    <button class="clear-btn" type="button" id="clear-search-btn" title="Clear filters" aria-label="Clear filters">
+                        <i class="fa fa-xmark"></i>
+                    </button>
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -852,6 +931,7 @@
         </div>
     </div>
 </main>
+</div>
 
 <div id="toastMessage" class="toast-message" role="status" aria-live="polite"></div>
 
@@ -1015,6 +1095,11 @@
         return value ? String(value).slice(0, 5) : "Time TBD";
     }
 
+    function formatHours(value) {
+        const hours = Number(value) || 0;
+        return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
     function getLocalEndOfDay(dateStr) {
         if (!dateStr) return null;
         const dateOnly = String(dateStr).slice(0, 10);
@@ -1131,7 +1216,7 @@
                         </div>
                         <div class="info-row">
                             <i class="fa fa-clock"></i>
-                            <span>${o.hours_required || 0} volunteer hours</span>
+                            <span>${formatHours(o.hours_required)} volunteer hours</span>
                         </div>
                         <div class="info-row">
                             <i class="fa fa-users"></i>
@@ -1153,15 +1238,33 @@
         document.getElementById("stat-opps").textContent = opportunities.length;
     }
 
+    function normalizeSearchText(value) {
+        return String(value ?? "")
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function includesSearchTerm(value, term) {
+        return !term || normalizeSearchText(value).includes(term);
+    }
+
     function filterOpportunities() {
-        const keyword  = document.getElementById("searchName").value.toLowerCase().trim();
-        const location = document.getElementById("searchLocation").value.toLowerCase().trim();
-        const field    = document.getElementById("searchField").value;
+        const keyword  = normalizeSearchText(document.getElementById("searchName").value);
+        const location = normalizeSearchText(document.getElementById("searchLocation").value);
+        const field    = normalizeSearchText(document.getElementById("searchField").value);
 
         const filtered = allOpportunities.filter(o => {
-            const matchKeyword  = !keyword  || o.title.toLowerCase().includes(keyword) || (o.description || '').toLowerCase().includes(keyword);
-            const matchLocation = !location || (o.location || '').toLowerCase().includes(location);
-            const matchField    = !field    || o.field === field;
+            const matchKeyword =
+                !keyword ||
+                includesSearchTerm(o.title, keyword) ||
+                includesSearchTerm(o.description, keyword) ||
+                includesSearchTerm(o.ngo_name, keyword) ||
+                includesSearchTerm(o.field, keyword);
+            const matchLocation = includesSearchTerm(o.location, location);
+            const matchField    = !field || normalizeSearchText(o.field) === field;
             const isPassed = isPastOpportunity(o);
             const matchStatus =
                 (activeStatusFilter === "upcoming" && !isPassed) ||
@@ -1171,6 +1274,13 @@
         });
 
         renderCards(filtered);
+    }
+
+    function clearSearchFilters() {
+        document.getElementById("searchName").value = "";
+        document.getElementById("searchLocation").value = "";
+        document.getElementById("searchField").value = "";
+        filterOpportunities();
     }
 
     async function toggleSavedOpportunity(id, btn) {
@@ -1211,12 +1321,23 @@
         }
     }
 
-    // Allow pressing Enter in search inputs
-    ['searchName','searchLocation'].forEach(id => {
-        document.getElementById(id).addEventListener('keydown', e => {
-            if (e.key === 'Enter') filterOpportunities();
-        });
+    let searchTimer = null;
+    function queueSearch() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(filterOpportunities, 180);
+    }
+
+    document.getElementById("opportunity-search-form").addEventListener("submit", event => {
+        event.preventDefault();
+        filterOpportunities();
     });
+
+    ["searchName", "searchLocation"].forEach(id => {
+        document.getElementById(id).addEventListener("input", queueSearch);
+    });
+
+    document.getElementById("searchField").addEventListener("change", filterOpportunities);
+    document.getElementById("clear-search-btn").addEventListener("click", clearSearchFilters);
 
     document.querySelectorAll(".status-tab").forEach(tab => {
         tab.addEventListener("click", () => {
