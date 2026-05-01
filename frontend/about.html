@@ -391,9 +391,9 @@
       </div>
 
       <div class="auth-links">
-        <ul class="navbar-nav">
-          <li class="nav-item"><a class="nav-link" href="login.html">Login</a></li>
-          <li class="nav-item"><a class="nav-link btn btn-light text-primary px-3" href="register.html">Register</a></li>
+        <ul class="navbar-nav" id="authNav">
+          <li class="nav-item"><a class="nav-link" id="loginLink" href="login.html">Login</a></li>
+          <li class="nav-item" id="registerNavItem"><a class="nav-link btn btn-light text-primary px-3" href="register.html">Register</a></li>
         </ul>
       </div>
     </div>
@@ -495,6 +495,66 @@
   <!-- CountUp JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.0.8/countUp.min.js"></script>
   <script>
+    function clearAuthStorage() {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("ngo_id");
+    }
+
+    function getTokenPayload() {
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < currentTime) {
+          clearAuthStorage();
+          return null;
+        }
+        return payload;
+      } catch (error) {
+        clearAuthStorage();
+        return null;
+      }
+    }
+
+    function updateAuthNav() {
+      const payload = getTokenPayload();
+      const loginLink = document.getElementById("loginLink");
+      const registerNavItem = document.getElementById("registerNavItem");
+      const authNav = document.getElementById("authNav");
+      const existingLogout = document.getElementById("logoutNavItem");
+
+      if (!payload) {
+        loginLink.textContent = "Login";
+        loginLink.href = "login.html";
+        registerNavItem.style.display = "";
+        if (existingLogout) existingLogout.remove();
+        return;
+      }
+
+      loginLink.textContent = "My Profile";
+      loginLink.href = payload.role === "NGO" ? "ngo-profile.html" : `profile.html?userId=${payload.user_id}`;
+      registerNavItem.style.display = "none";
+
+      if (!existingLogout) {
+        const logoutItem = document.createElement("li");
+        logoutItem.className = "nav-item";
+        logoutItem.id = "logoutNavItem";
+        logoutItem.innerHTML = '<a class="nav-link" href="#">Log Out</a>';
+        logoutItem.querySelector("a").addEventListener("click", (event) => {
+          event.preventDefault();
+          clearAuthStorage();
+          window.location.href = "landingpage.html";
+        });
+        authNav.appendChild(logoutItem);
+      }
+    }
+
+    updateAuthNav();
+
     // Init AOS
     if (window.AOS) AOS.init({ duration: 700, offset: 80, once: true });
 

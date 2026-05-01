@@ -261,7 +261,7 @@
     <!-- CTA Boxes -->
     <div class="row justify-content-center mt-5 px-3">
       <!-- NGO Box -->
-      <div class="col-md-5 mb-4 d-flex">
+      <div class="col-md-5 mb-4 d-flex" id="ngoCtaCard">
         <div class="cta-box flex-fill">
           <div class="icon text-warning"><i class="bi bi-building"></i></div>
           <h3 class="mb-3 text-primary">Are You an NGO?</h3>
@@ -271,7 +271,7 @@
       </div>
 
       <!-- Volunteer Box -->
-      <div class="col-md-5 mb-4 d-flex">
+      <div class="col-md-5 mb-4 d-flex" id="volunteerCtaCard">
         <div class="cta-box flex-fill">
           <div class="icon text-success"><i class="bi bi-people"></i></div>
           <h3 class="mb-3 text-success">Looking to Volunteer?</h3>
@@ -321,6 +321,7 @@
       const registerNavItem = document.getElementById("registerNavItem");
       const authNav = document.getElementById("authNav");
       const existingLogout = document.getElementById("logoutNavItem");
+      updateLandingCards(payload);
 
       if (!payload) {
         loginLink.textContent = "Login";
@@ -346,6 +347,22 @@
         });
         authNav.appendChild(logoutItem);
       }
+    }
+
+    function updateLandingCards(payload) {
+      const ngoCtaCard = document.getElementById("ngoCtaCard");
+      const volunteerCtaCard = document.getElementById("volunteerCtaCard");
+      if (!ngoCtaCard || !volunteerCtaCard) return;
+
+      if (!payload) {
+        ngoCtaCard.style.display = "";
+        volunteerCtaCard.style.display = "";
+        return;
+      }
+
+      const role = String(payload.role || localStorage.getItem("userRole") || "").toLowerCase();
+      ngoCtaCard.style.display = role === "ngo" ? "" : "none";
+      volunteerCtaCard.style.display = role === "volunteer" ? "" : "none";
     }
 
     function handlePostOpportunities(event) {

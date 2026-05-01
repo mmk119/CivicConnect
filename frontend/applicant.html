@@ -130,6 +130,17 @@
             margin-top: 16px;
         }
 
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            margin: 0;
+            -webkit-appearance: none;
+        }
+
+        input[type="number"] {
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+
         @media (max-width: 680px) {
             .applicants-hero,
             .filter-panel {
