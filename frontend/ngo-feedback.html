@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volunteer Endorsement | CivicConnect</title>
+  <script src="notifications.js"></script>
+  <script src="app-utils.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: Arial, sans-serif; color: #10253d; background: #eef4f9; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 42px;
+      color: #fff;
+      background: linear-gradient(90deg, #1087ee, #ff6800);
+    }
+    .brand, .back { color: #fff; text-decoration: none; font-weight: 900; }
+    .shell { width: min(980px, calc(100% - 36px)); margin: 34px auto; }
+    .head { margin-bottom: 20px; }
+    .eyebrow { color: #1285f3; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1 { margin-top: 6px; font-size: clamp(1.9rem, 4vw, 3rem); }
+    .layout { display: grid; grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.4fr); gap: 20px; align-items: start; }
+    .panel {
+      border: 1px solid #d9e4ef;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 18px 42px rgba(16, 37, 61, 0.12);
+    }
+    .summary, .form { padding: 24px; }
+    .summary h2 { margin-bottom: 8px; }
+    .summary p { color: #506981; line-height: 1.55; }
+    .facts { display: grid; gap: 10px; margin-top: 18px; }
+    .fact { display: flex; gap: 10px; padding: 11px; border-radius: 11px; background: #f4f8fc; color: #395872; font-weight: 800; }
+    .fact i { color: #1285f3; margin-top: 2px; }
+    .step { margin-bottom: 20px; }
+    label, .step-title { display: block; margin-bottom: 8px; color: #173b5b; font-weight: 900; }
+    select, input, textarea {
+      width: 100%;
+      min-height: 46px;
+      padding: 12px;
+      border: 1px solid #cbd8e6;
+      border-radius: 10px;
+      font: inherit;
+    }
+    textarea { min-height: 150px; resize: vertical; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { border: 1px solid #cbd8e6; border-radius: 999px; padding: 9px 12px; background: #fff; color: #31506d; font-weight: 900; cursor: pointer; }
+    .tag.active { border-color: #1285f3; background: #e7f4ff; color: #0877da; }
+    .counter { margin-top: 6px; color: #70869a; text-align: right; font-size: 0.86rem; font-weight: 800; }
+    .primary {
+      min-height: 46px;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 10px;
+      color: #fff;
+      background: #1285f3;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .note { padding: 14px; border: 1px solid #ffe0a3; border-radius: 12px; color: #805100; background: #fff8e6; line-height: 1.45; }
+    @media (max-width: 780px) {
+      .topbar { padding: 16px 20px; }
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="dashboard.html">CivicConnect</a>
+    <a class="back" id="back-link" href="dashboard.html">Back</a>
+  </header>
+
+  <main class="shell">
+    <section class="head">
+      <div class="eyebrow">NGO Feedback</div>
+      <h1>Endorse a Volunteer</h1>
+    </section>
+
+    <section class="layout">
+      <aside class="panel summary" id="summary-panel">
+        <h2>Loading volunteer...</h2>
+      </aside>
+      <section class="panel form" id="form-panel">
+        <div class="note">Loading feedback form...</div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const applicationId = Number(params.get("application_id"));
+    const opportunityId = Number(params.get("opportunity_id"));
+    const tags = ["Reliable", "Punctual", "Strong communicator", "Team player", "Empathetic", "Took initiative"];
+
+    function escapeHTML(value) {
+      return CivicConnect.escapeHTML(value);
+    }
+
+    function formatHours(value) {
+      const hours = Number(value) || 0;
+      return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    function selectedTags() {
+      return Array.from(document.querySelectorAll(".tag.active")).map(button => button.dataset.tag);
+    }
+
+    function updateCounter() {
+      const textarea = document.getElementById("comment");
+      const counter = document.getElementById("counter");
+      if (textarea && counter) counter.textContent = `${textarea.value.length}/1200`;
+    }
+
+    function renderSummary(applicant) {
+      document.getElementById("summary-panel").innerHTML = `
+        <h2>${escapeHTML(applicant.name)}</h2>
+        <p>${escapeHTML(applicant.email)}<br>${escapeHTML(applicant.city || "City not provided")}</p>
+        <div class="facts">
+          <div class="fact"><i class="fa fa-hand-holding-heart"></i><span>${escapeHTML(applicant.opportunity_name || "Opportunity")}</span></div>
+          <div class="fact"><i class="fa fa-clock"></i><span>${formatHours(applicant.hours_completed)} completed hours</span></div>
+          <div class="fact"><i class="fa fa-chart-line"></i><span>${formatHours(applicant.total_hours)} total confirmed hours</span></div>
+          <div class="fact"><i class="fa fa-screwdriver-wrench"></i><span>${escapeHTML(applicant.skills || "Skills not provided")}</span></div>
+        </div>
+      `;
+    }
+
+    function renderForm(applicant) {
+      const panel = document.getElementById("form-panel");
+      if (applicant.attendance_confirmed !== "YES") {
+        panel.innerHTML = `<div class="note">Feedback unlocks after attendance is confirmed.</div>`;
+        return;
+      }
+      if (applicant.volunteer_feedback_id) {
+        panel.innerHTML = `
+          <div class="note">
+            <strong>Feedback already submitted.</strong><br>
+            This endorsement was sent to the volunteer and can only be submitted once.
+          </div>
+        `;
+        return;
+      }
+      panel.innerHTML = `
+        <div class="step">
+          <label for="rating">1. Overall rating</label>
+          <select id="rating">
+            ${[5, 4, 3, 2, 1].map(value => `<option value="${value}">${value} star${value === 1 ? "" : "s"}</option>`).join("")}
+          </select>
+        </div>
+        <div class="step">
+          <label for="title">2. Endorsement title</label>
+          <input id="title" maxlength="120" placeholder="Reliable, thoughtful team contributor">
+        </div>
+        <div class="step">
+          <div class="step-title">3. Quick strengths</div>
+          <div class="tag-row">
+            ${tags.map(tag => `<button class="tag" type="button" data-tag="${escapeHTML(tag)}">${escapeHTML(tag)}</button>`).join("")}
+          </div>
+        </div>
+        <div class="step">
+          <label for="comment">4. Feedback visible to the volunteer</label>
+          <textarea id="comment" maxlength="1200" placeholder="Describe their contribution, attitude, reliability, and impact."></textarea>
+          <div class="counter" id="counter">0/1200</div>
+        </div>
+        <div class="step">
+          <label for="strengths">5. Additional strengths or skills noticed</label>
+          <input id="strengths" maxlength="800" placeholder="Communication, punctuality, empathy">
+        </div>
+        <button class="primary" type="button" id="submit-feedback"><i class="fa fa-paper-plane"></i> Save Feedback</button>
+      `;
+      document.querySelectorAll(".tag").forEach(button => {
+        button.addEventListener("click", () => button.classList.toggle("active"));
+      });
+      document.getElementById("comment").addEventListener("input", updateCounter);
+      document.getElementById("submit-feedback").addEventListener("click", submitFeedback);
+    }
+
+    async function submitFeedback() {
+      const rating = document.getElementById("rating").value;
+      const endorsement_title = document.getElementById("title").value.trim();
+      const comment = document.getElementById("comment").value.trim();
+      const strengthsInput = document.getElementById("strengths").value.trim();
+      const strengths = [strengthsInput, ...selectedTags()].filter(Boolean).join(", ");
+
+      try {
+        await CivicConnect.apiRequest(`/api/feedback/volunteer/${applicationId}`, {
+          method: "POST",
+          headers: CivicConnect.authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ rating, endorsement_title, comment, strengths })
+        });
+        showToast("Feedback saved.", "success");
+        window.location.href = `applicant.html?opportunity_id=${opportunityId}`;
+      } catch (err) {
+        showToast(err.message || "Could not save feedback.", "error");
+      }
+    }
+
+    async function loadPage() {
+      if (!Number.isInteger(applicationId) || !Number.isInteger(opportunityId)) {
+        window.location.href = "dashboard.html";
+        return;
+      }
+      document.getElementById("back-link").href = `applicant.html?opportunity_id=${opportunityId}`;
+      try {
+        const applicants = await CivicConnect.apiRequest(`/api/applicants?opportunity_id=${opportunityId}`, {
+          headers: CivicConnect.authHeaders()
+        });
+        const applicant = applicants.find(item => Number(item.id) === applicationId);
+        if (!applicant) throw new Error("Applicant not found.");
+        renderSummary(applicant);
+        renderForm(applicant);
+      } catch (err) {
+        document.getElementById("form-panel").innerHTML = `<div class="note">${escapeHTML(err.message)}</div>`;
+      }
+    }
+
+    loadPage();
+  </script>
+</body>
+</html>

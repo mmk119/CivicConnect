@@ -218,6 +218,7 @@
     }
   </style>
   <link rel="stylesheet" href="civic-ui.css">
+  <script src="app-utils.js"></script>
 </head>
 <body>
   <div class="overlay"></div>
@@ -375,8 +376,7 @@
       }
 
       if (payload.role !== "NGO" || !payload.ngo_id) {
-        alert("Only NGO accounts can post volunteering opportunities.");
-        window.location.href = "opportunities.html";
+        showAlert("Only NGO accounts can post volunteering opportunities.", () => { window.location.href = "opportunities.html"; });
         return;
       }
 

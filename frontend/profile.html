@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Volunteer Profile - CivicConnect</title>
   <script src="notifications.js"></script>
+  <script src="app-utils.js"></script>
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -346,6 +347,30 @@
     .endorsement-card small {
       color: #4a6274;
       font-weight: 600;
+    }
+
+    .endorsed-experience {
+      grid-column: span 2;
+      display: block;
+      text-align: left;
+      border-color: #18a058;
+      background: linear-gradient(135deg, #eafaf0, #f5fff8);
+      color: #0f5132;
+      border-radius: 14px;
+      line-height: 1.45;
+    }
+
+    .endorsed-experience strong {
+      display: block;
+      color: #0f5132;
+      margin-bottom: 5px;
+    }
+
+    .endorsed-experience small {
+      display: block;
+      margin-top: 5px;
+      color: #3d6b50;
+      font-weight: 700;
     }
 
     .skill-tag i,
@@ -726,17 +751,6 @@
           </div>
         </div>
 
-        <!-- ENDORSEMENTS SECTION -->
-        <h3 class="section-title">
-          <i class="fas fa-comment-dots"></i> Profile Endorsements
-        </h3>
-        <div class="endorsements-container" id="endorsements">
-          <div class="empty-state">
-            <i class="fas fa-comment-slash"></i>
-            <p>No endorsements added to your profile yet.</p>
-          </div>
-        </div>
-
         <!-- ACTION BUTTONS -->
         <div class="action-buttons">
           <button id="edit-btn" class="btn-modern btn-primary-modern">
@@ -857,7 +871,7 @@
     function showNotification(message, type = 'success') {
       const toast = document.createElement('div');
       toast.className = `toast-notification ${type}`;
-      toast.innerHTML = `<strong>${type === 'success' ? '✓ Success' : '✗ Error'}:</strong> ${message}`;
+      toast.textContent = `${type === 'success' ? 'Success' : 'Error'}: ${message}`;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 4000);
     }
@@ -869,6 +883,11 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    function formatHours(value) {
+      const hours = Number(value) || 0;
+      return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     }
 
     document.addEventListener("DOMContentLoaded", async function () {
@@ -893,7 +912,6 @@
       const preferencesField = document.getElementById("preferences");
       const skillsContainer = document.getElementById("skills");
       const experiencesContainer = document.getElementById("experiences");
-      const endorsementsContainer = document.getElementById("endorsements");
       const uploadPhotoInput = document.getElementById("upload-photo");
       const profilePicture = document.getElementById("profile-picture");
       const editModal = new bootstrap.Modal(document.getElementById("editModal"));
@@ -951,10 +969,19 @@
           }
 
           // Experiences
-          if (data.experiences && data.experiences.length > 0) {
-            experiencesContainer.innerHTML = data.experiences
-              .map(exp => `<div class="exp-item"><i class="fas fa-award"></i> ${escapeHTML(exp)}</div>`)
-              .join("");
+          const manualExperiences = (data.experiences || [])
+            .map(exp => `<div class="exp-item manual-experience"><i class="fas fa-award"></i> ${escapeHTML(exp)}</div>`);
+          const endorsedExperiences = (data.profileEndorsements || [])
+            .map(item => `
+              <div class="exp-item endorsed-experience">
+                <strong><i class="fas fa-comment-dots"></i> ${escapeHTML(item.endorsement_title || "NGO endorsement")}</strong>
+                ${escapeHTML(item.opportunity_title || "Volunteer opportunity")} with ${escapeHTML(item.ngo_name || "NGO")}
+                ${item.strengths ? `<small>Strengths: ${escapeHTML(item.strengths)}</small>` : ""}
+              </div>
+            `);
+
+          if (manualExperiences.length > 0 || endorsedExperiences.length > 0) {
+            experiencesContainer.innerHTML = [...manualExperiences, ...endorsedExperiences].join("");
           } else {
             experiencesContainer.innerHTML = `
               <div class="empty-state">
@@ -963,23 +990,6 @@
               </div>`;
           }
 
-          if (data.profileEndorsements && data.profileEndorsements.length > 0) {
-            endorsementsContainer.innerHTML = data.profileEndorsements.map(item => `
-              <div class="endorsement-card">
-                <strong>${escapeHTML(item.endorsement_title || "Volunteer endorsement")}</strong>
-                <div>${Number(item.rating) || 0}/5 rating</div>
-                <p>${escapeHTML(item.comment || "")}</p>
-                ${item.strengths ? `<small>Strengths: ${escapeHTML(item.strengths)}</small><br>` : ""}
-                <small>${escapeHTML(item.ngo_name || "NGO")} | ${escapeHTML(item.opportunity_title || "Opportunity")}</small>
-              </div>
-            `).join("");
-          } else {
-            endorsementsContainer.innerHTML = `
-              <div class="empty-state">
-                <i class="fas fa-comment-slash"></i>
-                <p>No endorsements added to your profile yet.</p>
-              </div>`;
-          }
         } catch (error) {
           console.error('Profile fetch error:', error);
           showNotification('Failed to load profile', 'error');
@@ -1033,7 +1043,7 @@
         document.getElementById("edit-skills").value = skills;
 
         const experiences = Array.from(experiencesContainer.children)
-          .filter(el => el.classList.contains('exp-item'))
+          .filter(el => el.classList.contains('manual-experience'))
           .map(el => el.textContent.trim().replace('✓', '').trim())
           .join(', ');
         document.getElementById("edit-experiences").value = experiences;
@@ -1084,10 +1094,10 @@
       });
 
       logoutButton.addEventListener("click", function () {
-        if (confirm('Are you sure you want to log out?')) {
+        showConfirm('Are you sure you want to log out?', () => {
           localStorage.clear();
           window.location.href = '/login.html';
-        }
+        });
       });
 
       // Validate token
@@ -1111,7 +1121,3 @@
 </body>
 
 </html>
-      function formatHours(value) {
-        const hours = Number(value) || 0;
-        return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-      }

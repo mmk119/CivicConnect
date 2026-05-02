@@ -1,11 +1,11 @@
-/* eslint-disable no-undef */
-require('dotenv').config();
+require('./config/env');
 
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
+const { createCorsOptions } = require('./config/cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -14,6 +14,7 @@ const { google } = require('googleapis');
 const crypto = require('crypto');
 const util = require('util');
 const { createAuthenticateToken, requireAdmin } = require('./middleware/auth');
+const registerMiscRoutes = require('./routes/misc.routes');
 const winston = require("winston");
 const logger = winston.createLogger({
     level: "info",
@@ -35,8 +36,9 @@ console.error = (...args) => logger.error(util.format(...args));
 logger.info("Server is starting...");
 
 const app = express();
+const frontendDir = path.join(__dirname, '../frontend');
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(frontendDir));
 
 const morgan = require("morgan");
 app.use(morgan("combined"));
@@ -52,34 +54,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 app.use(express.json());
-const allowedOrigins = [
-    'http://localhost:3000',
-    'https://civicconnect-2.onrender.com',
-    'http://127.0.0.1:5500',
-    'https://CivicConnect-516m.onrender.com'
-];
-
-app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.error('Blocked by CORS:', origin);
-            callback(new Error('CORS not allowed from this origin: ' + origin));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://CivicConnect-516m.onrender.com');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,DELETE,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    next();
-});
+app.use(cors(createCorsOptions()));
 
 const oAuth2Client = new google.auth.OAuth2(
     process.env.CLIENT_ID,
@@ -210,16 +185,81 @@ function normalizeApplicationAnswers(questions, answers) {
     })));
 }
 
-function isOpportunityGoodMatch(opportunity, volunteer) {
-    if (!volunteer) return false;
+function opportunityMatchReasons(opportunity, volunteer) {
+    if (!volunteer) return [];
+    const reasons = [];
     const preferredFields = normalizeList(volunteer.preferred_fields).map(item => item.toLowerCase());
     const preferredCities = normalizeList(volunteer.preferred_cities).map(item => item.toLowerCase());
     const availableDays = normalizeList(volunteer.available_days).map(item => item.toUpperCase());
     const opportunityDays = normalizeList(opportunity.schedule_days).map(item => item.toUpperCase());
-    const fieldMatch = preferredFields.length > 0 && preferredFields.includes(String(opportunity.field || '').toLowerCase());
-    const cityMatch = preferredCities.length > 0 && preferredCities.some(city => String(opportunity.location || '').toLowerCase().includes(city));
-    const dayMatch = availableDays.length > 0 && opportunityDays.some(day => availableDays.includes(day));
-    return [fieldMatch, cityMatch, dayMatch].filter(Boolean).length >= 2 || (fieldMatch && preferredCities.length === 0 && availableDays.length === 0);
+
+    if (preferredFields.includes(String(opportunity.field || '').toLowerCase())) {
+        reasons.push('Matches your preferred field');
+    }
+    if (preferredCities.some(city => String(opportunity.location || '').toLowerCase().includes(city))) {
+        reasons.push('Matches your preferred city');
+    }
+    if (opportunityDays.some(day => availableDays.includes(day))) {
+        reasons.push('Matches your available days');
+    }
+
+    return reasons;
+}
+
+function authCookieOptions() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    return {
+        httpOnly: true,
+        secure: String(process.env.COOKIE_SECURE || isProduction).toLowerCase() === 'true',
+        sameSite: process.env.COOKIE_SAMESITE || (isProduction ? 'none' : 'lax'),
+        maxAge: Number(process.env.COOKIE_MAX_AGE_MS) || 60 * 60 * 1000
+    };
+}
+
+function dateEndOfDay(value) {
+    const date = dateFromInput(value);
+    if (!date) return null;
+    date.setHours(23, 59, 59, 999);
+    return date;
+}
+
+function opportunityLifecycle(opportunity) {
+    const storedStatus = opportunity.status || 'open';
+    if (storedStatus === 'completed' || storedStatus === 'archived' || storedStatus === 'closed') return storedStatus;
+    const start = dateFromInput(opportunity.start_date);
+    const end = dateEndOfDay(opportunity.end_date);
+    const now = new Date();
+    if (start && end && now >= start && now <= end) return 'in_progress';
+    return storedStatus;
+}
+
+function withOpportunityLifecycle(opportunity) {
+    const acceptedCount = Number(opportunity.accepted_count) || 0;
+    const resolvedAcceptedCount = Number(opportunity.resolved_accepted_count) || 0;
+    const needsAttendanceReview = acceptedCount > resolvedAcceptedCount;
+    return {
+        ...opportunity,
+        lifecycle_status: opportunityLifecycle(opportunity),
+        needs_attendance_review: needsAttendanceReview
+    };
+}
+
+async function opportunityFinalizeSummary(opportunityId, ngoId) {
+    const [rows] = await db.execute(`
+        SELECT
+            o.opportunity_id,
+            o.status,
+            o.end_date,
+            COUNT(CASE WHEN a.status = 'accepted' THEN 1 END) AS accepted_count,
+            COUNT(CASE WHEN a.status = 'accepted'
+                        AND (a.attendance_confirmed = 'YES' OR a.completion_status = 'no_show')
+                  THEN 1 END) AS resolved_count
+        FROM Opportunities o
+        LEFT JOIN Applications a ON a.opportunity_id = o.opportunity_id
+        WHERE o.opportunity_id = ? AND o.ngo_id = ?
+        GROUP BY o.opportunity_id, o.status, o.end_date
+    `, [opportunityId, ngoId]);
+    return rows[0] || null;
 }
 
 const uploadRoot = path.join(__dirname, '../uploads');
@@ -406,6 +446,7 @@ app.post('/api/login', async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
         );
 
+        res.cookie('cc_token', token, authCookieOptions());
         res.json({
             success: true,
             message: 'Login successful!',
@@ -634,16 +675,31 @@ app.get('/api/opportunities/all', async (req, res) => {
                     WHERE a.opportunity_id = o.opportunity_id
                       AND a.status = 'accepted'
                 ) AS accepted_count,
+                (
+                    SELECT COUNT(*)
+                    FROM Applications a
+                    WHERE a.opportunity_id = o.opportunity_id
+                      AND a.status = 'accepted'
+                      AND (a.attendance_confirmed = 'YES' OR a.completion_status = 'no_show')
+                ) AS resolved_accepted_count,
                 ${volunteer_id
                     ? `EXISTS(SELECT 1 FROM Applications WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id) AS has_applied,
                        EXISTS(SELECT 1 FROM SavedOpportunities WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id) AS is_saved`
                     : '0 AS has_applied, 0 AS is_saved'}
             FROM Opportunities o
             JOIN NGOs n ON o.ngo_id = n.ngo_id
+            WHERE o.status NOT IN ('completed', 'archived')
             ORDER BY o.start_date ASC
         `, volunteer_id ? [volunteer_id, volunteer_id] : []);
 
-        res.json(opportunities);
+        res.json(opportunities.map(opportunity => {
+            const matchReasons = opportunityMatchReasons(opportunity, volunteerProfile);
+            return {
+                ...withOpportunityLifecycle(opportunity),
+                is_good_match: matchReasons.length >= 2,
+                match_reasons: matchReasons
+            };
+        }));
     } catch (err) {
         console.error("Error fetching opportunities:", err);
         res.status(500).json({ error: "Failed to fetch opportunities." });
@@ -669,6 +725,13 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
                        SELECT COUNT(*)
                        FROM Applications a
                        WHERE a.opportunity_id = o.opportunity_id
+                         AND a.status = 'accepted'
+                         AND (a.attendance_confirmed = 'YES' OR a.completion_status = 'no_show')
+                   ) AS resolved_accepted_count,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id
                          AND a.status = 'pending'
                    ) AS pending_count,
                    (
@@ -680,7 +743,7 @@ app.get("/api/opportunities", authenticateToken, async (req, res) => {
             FROM Opportunities o
             WHERE o.ngo_id = ?
         `, [ngoId]);
-        res.json(rows);
+        res.json(rows.map(withOpportunityLifecycle));
     } catch (err) {
         console.error("Database error:", err);
         res.status(500).json({ message: "Internal server error." });
@@ -737,8 +800,8 @@ app.post('/api/opportunities/ins', authenticateToken, async (req, res) => {
 
         const query = `
             INSERT INTO Opportunities
-                (title, field, description, start_date, end_date, schedule_days, start_time, end_time, hours_required, capacity, location, application_questions, ngo_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (title, field, description, start_date, end_date, schedule_days, start_time, end_time, hours_required, capacity, location, application_questions, ngo_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')
         `;
         const [result] = await db.execute(query, [
             title,
@@ -804,7 +867,8 @@ app.patch('/api/opportunities/:id', authenticateToken, async (req, res) => {
             UPDATE Opportunities
             SET title = ?, field = ?, description = ?, start_date = ?, end_date = ?,
                 schedule_days = ?, start_time = ?, end_time = ?, hours_required = ?,
-                capacity = ?, location = ?, application_questions = ?
+                capacity = ?, location = ?, application_questions = ?,
+                status = CASE WHEN status = 'completed' OR status = 'archived' THEN status ELSE 'open' END
             WHERE opportunity_id = ? AND ngo_id = ?
         `, [
             title,
@@ -834,6 +898,11 @@ app.patch('/api/opportunities/:id', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/logout', (req, res) => {
+    res.clearCookie('cc_token', authCookieOptions());
+    res.json({ success: true });
+});
+
 // FIX 4: DELETE ran the query twice and used wrong check — now uses affectedRows
 app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'NGO' || !req.user.ngo_id) {
@@ -854,6 +923,77 @@ app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error("Error deleting opportunity:", err);
         res.status(500).json({ error: "Failed to delete opportunity." });
+    }
+});
+
+app.patch('/api/opportunities/:id/close', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: "Only NGO accounts can close opportunities." });
+    }
+
+    const opportunityId = Number(req.params.id);
+    if (!Number.isInteger(opportunityId) || opportunityId < 1) {
+        return res.status(400).json({ error: "Valid opportunity ID is required." });
+    }
+
+    try {
+        const [result] = await db.execute(`
+            UPDATE Opportunities
+            SET status = 'closed'
+            WHERE opportunity_id = ?
+              AND ngo_id = ?
+              AND status IN ('open', 'in_progress')
+        `, [opportunityId, req.user.ngo_id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Opportunity not found or cannot be closed." });
+        }
+
+        res.json({ message: "Applications closed for this opportunity." });
+    } catch (err) {
+        console.error("Error closing opportunity:", err);
+        res.status(500).json({ error: "Failed to close opportunity." });
+    }
+});
+
+app.patch('/api/opportunities/:id/finalize', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: "Only NGO accounts can finalize opportunities." });
+    }
+
+    const opportunityId = Number(req.params.id);
+    if (!Number.isInteger(opportunityId) || opportunityId < 1) {
+        return res.status(400).json({ error: "Valid opportunity ID is required." });
+    }
+
+    try {
+        const summary = await opportunityFinalizeSummary(opportunityId, req.user.ngo_id);
+        if (!summary) {
+            return res.status(404).json({ error: "Opportunity not found." });
+        }
+
+        const endDate = dateEndOfDay(summary.end_date);
+        if (endDate && endDate > new Date()) {
+            return res.status(400).json({ error: "You can finalize after the opportunity end date." });
+        }
+
+        if (Number(summary.accepted_count) > Number(summary.resolved_count)) {
+            return res.status(400).json({
+                error: "Resolve attendance for every accepted volunteer before finalizing."
+            });
+        }
+
+        await db.execute(`
+            UPDATE Opportunities
+            SET status = 'completed',
+                finalized_at = COALESCE(finalized_at, NOW())
+            WHERE opportunity_id = ? AND ngo_id = ?
+        `, [opportunityId, req.user.ngo_id]);
+
+        res.json({ message: "Opportunity finalized as completed." });
+    } catch (err) {
+        console.error("Error finalizing opportunity:", err);
+        res.status(500).json({ error: "Failed to finalize opportunity." });
     }
 });
 
@@ -1247,8 +1387,10 @@ app.patch('/api/applications/:application_id/attendance', authenticateToken, asy
         await db.execute(`
             UPDATE Applications
             SET attendance_confirmed = 'YES',
+                completion_status = 'attended',
                 hours_completed = ?,
                 attendance_confirmed_at = NOW(),
+                completed_at = COALESCE(completed_at, NOW()),
                 certificate_id = COALESCE(certificate_id, UUID())
             WHERE application_id = ?
         `, [requestedHours, application_id]);
@@ -1257,6 +1399,89 @@ app.patch('/api/applications/:application_id/attendance', authenticateToken, asy
     } catch (err) {
         console.error('Error confirming attendance:', err);
         res.status(500).json({ error: 'Failed to confirm attendance.' });
+    }
+});
+
+app.patch('/api/applications/:application_id/no-show', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'NGO' || !req.user.ngo_id) {
+        return res.status(403).json({ error: 'Only NGO accounts can mark no-shows.' });
+    }
+
+    const applicationId = Number(req.params.application_id);
+    if (!Number.isInteger(applicationId) || applicationId < 1) {
+        return res.status(400).json({ error: 'Valid application ID is required.' });
+    }
+
+    try {
+        const [applications] = await db.execute(`
+            SELECT a.application_id, a.status, a.attendance_confirmed
+            FROM Applications a
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
+            WHERE a.application_id = ? AND o.ngo_id = ?
+        `, [applicationId, req.user.ngo_id]);
+
+        if (applications.length === 0) {
+            return res.status(404).json({ error: 'Application not found for this NGO.' });
+        }
+
+        if (applications[0].status !== 'accepted') {
+            return res.status(400).json({ error: 'Only accepted applications can be marked no-show.' });
+        }
+
+        if (applications[0].attendance_confirmed === 'YES') {
+            return res.status(409).json({ error: 'Attendance was already confirmed.' });
+        }
+
+        await db.execute(`
+            UPDATE Applications
+            SET completion_status = 'no_show',
+                hours_completed = 0,
+                completed_at = COALESCE(completed_at, NOW())
+            WHERE application_id = ?
+        `, [applicationId]);
+
+        res.json({ message: 'Volunteer marked as no-show.' });
+    } catch (err) {
+        console.error('Error marking no-show:', err);
+        res.status(500).json({ error: 'Failed to mark no-show.' });
+    }
+});
+
+app.patch('/api/applications/:application_id/withdraw', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'Volunteer') {
+        return res.status(403).json({ error: 'Only volunteers can withdraw applications.' });
+    }
+
+    const applicationId = Number(req.params.application_id);
+    if (!Number.isInteger(applicationId) || applicationId < 1) {
+        return res.status(400).json({ error: 'Valid application ID is required.' });
+    }
+
+    try {
+        const [volunteers] = await db.execute(
+            'SELECT volunteer_id FROM Volunteers WHERE user_id = ?',
+            [req.user.user_id]
+        );
+        if (volunteers.length === 0) {
+            return res.status(404).json({ error: 'Volunteer profile not found.' });
+        }
+
+        const [result] = await db.execute(`
+            UPDATE Applications
+            SET status = 'withdrawn'
+            WHERE application_id = ?
+              AND volunteer_id = ?
+              AND status = 'pending'
+        `, [applicationId, volunteers[0].volunteer_id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(400).json({ error: 'Only pending applications can be withdrawn.' });
+        }
+
+        res.json({ message: 'Application withdrawn successfully.' });
+    } catch (err) {
+        console.error('Error withdrawing application:', err);
+        res.status(500).json({ error: 'Failed to withdraw application.' });
     }
 });
 
@@ -1279,6 +1504,7 @@ app.get('/api/volunteer/applications', authenticateToken, async (req, res) => {
             SELECT
                 a.application_id,
                 a.status,
+                a.completion_status,
                 a.applied_at,
                 o.opportunity_id,
                 o.title,
@@ -1294,6 +1520,8 @@ app.get('/api/volunteer/applications', authenticateToken, async (req, res) => {
                 a.hours_completed,
                 a.attendance_confirmed,
                 a.attendance_confirmed_at,
+                a.completed_at,
+                a.certificate_id,
                 n.name AS ngo_name,
                 ofb.opportunity_feedback_id,
                 ofb.rating AS opportunity_feedback_rating,
@@ -1351,6 +1579,7 @@ app.get('/api/applicants', authenticateToken, async (req, res) => {
                 v.city,
                 v.skills,
                 a.status,
+                a.completion_status,
                 a.application_answers,
                 a.hours_completed,
                 a.attendance_confirmed,
@@ -1942,15 +2171,28 @@ app.get('/api/admin/opportunities', authenticateToken, requireAdmin, async (req,
                        SELECT COUNT(*)
                        FROM Applications a
                        WHERE a.opportunity_id = o.opportunity_id
-                   ) AS application_count
+                   ) AS application_count,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id AND a.status = 'accepted'
+                   ) AS accepted_count,
+                   (
+                       SELECT COUNT(*)
+                       FROM Applications a
+                       WHERE a.opportunity_id = o.opportunity_id
+                         AND a.status = 'accepted'
+                         AND (a.attendance_confirmed = 'YES' OR a.completion_status = 'no_show')
+                   ) AS resolved_accepted_count
             FROM Opportunities o
             JOIN NGOs n ON o.ngo_id = n.ngo_id
             WHERE (? = '' OR o.title LIKE ? OR o.description LIKE ? OR o.location LIKE ? OR n.name LIKE ?)
               AND (? = '' OR o.field = ?)
-              AND (? = '' OR (? = 'upcoming' AND o.end_date >= CURDATE()) OR (? = 'passed' AND o.end_date < CURDATE()))
+              AND (? = '' OR (? = 'upcoming' AND o.end_date >= CURDATE()) OR (? = 'passed' AND o.end_date < CURDATE())
+                          OR o.status = ?)
             ORDER BY o.created_at DESC
         `, [search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, field, field, status, status, status]);
-        res.json(opportunities);
+        res.json(opportunities.map(withOpportunityLifecycle));
     } catch (err) {
         console.error('Admin opportunities error:', err);
         res.status(500).json({ error: 'Failed to fetch opportunities.' });
@@ -1976,7 +2218,7 @@ app.get('/api/admin/applications', authenticateToken, requireAdmin, async (req, 
     const { status = '', search = '' } = req.query;
     try {
         const [applications] = await db.execute(`
-            SELECT a.application_id, a.status, a.applied_at, a.attendance_confirmed,
+            SELECT a.application_id, a.status, a.completion_status, a.applied_at, a.attendance_confirmed,
                    a.hours_completed, a.attendance_confirmed_at,
                    o.title AS opportunity_title, o.field, o.hours_required,
                    o.schedule_days, o.start_time, o.end_time,
@@ -2570,13 +2812,7 @@ app.get('/api/certificates/verify/:certificate_id', async (req, res) => {
 
 // ===== MISC =====
 
-app.get('/api/protected', authenticateToken, (req, res) => {
-    res.json({ message: "Access granted to protected resource", user: req.user });
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/landingpage.html'));
-});
+registerMiscRoutes(app, { authenticateToken, frontendDir });
 
 const PORT = Number(process.env.PORT) || 3000;
 

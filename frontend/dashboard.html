@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard - CivicConnect</title>
     <script src="notifications.js"></script>
+    <script src="app-utils.js"></script>
 
     <link rel="stylesheet" href="dashboard.css">
 
@@ -104,6 +105,7 @@
                 <span class="summary-label">Calculated Volunteer Hours</span>
                 <strong id="hoursPreview" aria-live="polite">Choose dates, days, and timing</strong>
                 <small id="hoursBreakdown" class="hours-breakdown"></small>
+                <div id="schedulePreview" class="schedule-preview" aria-live="polite"></div>
             </div>
             <input type="hidden" id="hours_required" value="">
         </div>
@@ -142,6 +144,7 @@
 <footer class="footer">
     © 2025 CivicConnect. All rights reserved.
 </footer>
+
 
 <script src="dashboard.js"></script>
 

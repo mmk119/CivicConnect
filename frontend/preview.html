@@ -92,6 +92,7 @@
         }
     </style>
   <link rel="stylesheet" href="civic-ui.css">
+  <script src="app-utils.js"></script>
 </head>
 
 <body>
@@ -136,8 +137,7 @@
             const payload = getTokenPayload();
 
             if (!payload || payload.role !== "NGO" || !payload.ngo_id) {
-                alert("Only NGO accounts can create volunteering opportunities.");
-                window.location.href = "opportunities.html";
+                showAlert("Only NGO accounts can create volunteering opportunities.", () => { window.location.href = "opportunities.html"; });
                 return false;
             }
 
@@ -166,8 +166,7 @@
             const storedData = localStorage.getItem("opportunityPreview");
 
             if (!storedData) {
-                alert("No opportunity details found.");
-                window.location.href = "dashboard.html";
+                showAlert("No opportunity details found.", () => { window.location.href = "dashboard.html"; });
                 return;
             }
 
@@ -195,7 +194,7 @@
             const storedData = localStorage.getItem("opportunityPreview");
 
             if (!storedData) {
-                alert("No opportunity data found.");
+                showAlert("No opportunity data found.");
                 return;
             }
 
@@ -212,17 +211,18 @@
             .then(res => res.json().then(data => ({ ok: res.ok, data })))
             .then(({ ok, data }) => {
                 if (!ok) {
-                    alert(data.error || "Failed to submit opportunity.");
+                    showAlert(data.error || "Failed to submit opportunity.");
                     return;
                 }
 
-                alert(data.message || "Opportunity submitted successfully!");
-                localStorage.removeItem("opportunityPreview");
-                window.location.href = "dashboard.html";
+                showAlert(data.message || "Opportunity submitted successfully!", () => {
+                    localStorage.removeItem("opportunityPreview");
+                    window.location.href = "dashboard.html";
+                });
             })
             .catch(err => {
                 console.error(err);
-                alert("Failed to submit opportunity.");
+                showAlert("Failed to submit opportunity.");
             });
         }
     </script>

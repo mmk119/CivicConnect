@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - CivicConnect</title>
-  <script src="notifications.js"></script>
+    <script src="notifications.js"></script>
+    <script src="app-utils.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * {
@@ -631,9 +632,14 @@
             <option>Other</option>
           </select>
           <select id="opportunity-status">
-            <option value="">Upcoming and passed</option>
+            <option value="">All statuses</option>
             <option value="upcoming">Upcoming</option>
             <option value="passed">Passed</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="archived">Archived</option>
           </select>
           <button class="btn" onclick="loadOpportunities()"><i class="fas fa-search"></i> Search</button>
         </div>
@@ -647,6 +653,7 @@
                 <th>Location</th>
                 <th>Dates</th>
                 <th>Hours</th>
+                <th>Status</th>
                 <th>Applications</th>
                 <th>Actions</th>
               </tr>
@@ -671,6 +678,7 @@
             <option value="pending">Pending</option>
             <option value="accepted">Accepted</option>
             <option value="rejected">Rejected</option>
+            <option value="withdrawn">Withdrawn</option>
           </select>
           <button class="btn" onclick="loadApplications()"><i class="fas fa-search"></i> Search</button>
         </div>
@@ -780,8 +788,7 @@
     const role = localStorage.getItem("userRole") || localStorage.getItem("role");
 
     if (!token || role !== "Admin") {
-      alert("Access denied. Admin privileges required.");
-      window.location.href = "login.html";
+      showAlert("Access denied. Admin privileges required.", () => { window.location.href = "login.html"; });
     }
 
     function authHeaders() {
@@ -837,8 +844,7 @@
       const response = await fetch(path, options);
       const data = await response.json().catch(() => ({}));
       if (response.status === 401 || response.status === 403) {
-        alert(data.error || "Admin session expired.");
-        logout();
+        showAlert(data.error || "Admin session expired.", () => { logout(); });
         return null;
       }
       if (!response.ok) throw new Error(data.error || "Request failed.");
@@ -942,11 +948,12 @@
     }
 
     async function deleteUser(userId) {
-      if (!confirm("Are you sure you want to delete this user?")) return;
+      showConfirm("Are you sure you want to delete this user?", async () => {
       await api(`/api/admin/users/${userId}`, { method: "DELETE", headers: authHeaders() });
       await loadUsers();
       await loadOverview();
       await loadAuditLogs();
+      });
     }
 
     async function loadNgos() {
@@ -1026,7 +1033,11 @@
       });
       const opportunities = await api(`/api/admin/opportunities?${params}`, { headers: authHeaders() });
       if (!opportunities) return;
-      setRows("opportunities-list", opportunities.map(opp => `
+      setRows("opportunities-list", opportunities.map(opp => {
+        const lifecycle = opp.lifecycle_status || opp.status || "open";
+        const needsReview = opp.needs_attendance_review;
+        const statusLabel = needsReview ? `${lifecycle} ⚠ needs review` : lifecycle;
+        return `
         <tr>
           <td><strong>${escapeHTML(opp.title)}</strong><br><small>${escapeHTML(opp.description || "")}</small></td>
           <td>${escapeHTML(opp.ngo_name)}</td>
@@ -1034,18 +1045,20 @@
           <td>${escapeHTML(opp.location)}</td>
           <td>${formatDate(opp.start_date)} - ${formatDate(opp.end_date)}<br><small>${formatScheduleDays(opp.schedule_days)} ${formatTime(opp.start_time)}-${formatTime(opp.end_time)}</small></td>
           <td>${formatHours(opp.hours_required)}</td>
+          <td>${badge(statusLabel)}</td>
           <td>${Number(opp.application_count) || 0}</td>
           <td><div class="action-cell"><button class="btn danger compact" onclick="deleteOpportunity(${opp.opportunity_id})"><i class="fas fa-trash"></i> Delete</button></div></td>
         </tr>
-      `).join(""), 8);
+      `}).join(""), 8);
     }
 
     async function deleteOpportunity(id) {
-      if (!confirm("Delete this opportunity? This also removes its applications.")) return;
-      await api(`/api/admin/opportunities/${id}`, { method: "DELETE", headers: authHeaders() });
-      await loadOpportunities();
-      await loadOverview();
-      await loadAuditLogs();
+      showConfirm("Delete this opportunity? This also removes its applications.", async () => {
+        await api(`/api/admin/opportunities/${id}`, { method: "DELETE", headers: authHeaders() });
+        await loadOpportunities();
+        await loadOverview();
+        await loadAuditLogs();
+      });
     }
 
     async function loadApplications() {
@@ -1055,17 +1068,21 @@
       });
       const applications = await api(`/api/admin/applications?${params}`, { headers: authHeaders() });
       if (!applications) return;
-      setRows("applications-list", applications.map(app => `
+      setRows("applications-list", applications.map(app => {
+        const displayStatus = app.completion_status === 'attended' ? 'completed'
+          : app.completion_status === 'no_show' ? 'no-show'
+          : app.status;
+        return `
         <tr>
           <td>${escapeHTML(app.volunteer_name)}<br><small>${escapeHTML(app.volunteer_email)}</small></td>
           <td>${escapeHTML(app.opportunity_title)}<br><small>${escapeHTML(app.field || "General")} | ${formatScheduleDays(app.schedule_days)} ${formatTime(app.start_time)}-${formatTime(app.end_time)}</small></td>
           <td>${escapeHTML(app.ngo_name)}</td>
-          <td>${badge(app.status)}</td>
+          <td>${badge(displayStatus)}</td>
           <td>${formatDate(app.applied_at)}</td>
           <td>${formatHours(app.hours_completed)} / ${formatHours(app.hours_required)}</td>
           <td>${badge(app.attendance_confirmed)}</td>
         </tr>
-      `).join(""), 7);
+      `}).join(""), 7);
     }
 
     async function loadFeedback() {
@@ -1122,10 +1139,11 @@
     }
 
     async function deleteFeedback(type, id) {
-      if (!confirm("Delete this feedback? Use this only for harmful, abusive, or unsafe content.")) return;
-      await api(`/api/admin/feedback/${type}/${id}`, { method: "DELETE", headers: authHeaders() });
-      await loadFeedback();
-      await loadAuditLogs();
+      showConfirm("Delete this feedback? Use this only for harmful, abusive, or unsafe content.", async () => {
+        await api(`/api/admin/feedback/${type}/${id}`, { method: "DELETE", headers: authHeaders() });
+        await loadFeedback();
+        await loadAuditLogs();
+      });
     }
 
     async function markFeedbackReviewed(type, id) {
@@ -1152,7 +1170,7 @@
       const response = await fetch(`/api/admin/export/${type}`, { headers: authHeaders() });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        alert(data.error || "Export failed.");
+        showAlert(data.error || "Export failed.");
         return;
       }
 

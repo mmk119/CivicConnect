@@ -71,6 +71,97 @@ function parseProfileEndorsements(value) {
   });
 }
 
+function renderList(items, emptyText) {
+  return items.length
+    ? `<ul class="mb-0">${items.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`
+    : `<span class="text-muted">${escapeHTML(emptyText)}</span>`;
+}
+
+function openVolunteerProfile(applicationId) {
+  const applicant = applicants.find(item => Number(item.id) === Number(applicationId));
+  if (!applicant) return;
+
+  const completedHistory = parseCompletedHistory(applicant.completed_history);
+  const profileEndorsements = parseProfileEndorsements(applicant.profile_endorsements);
+  const skills = String(applicant.skills || "")
+    .split(",")
+    .map(skill => skill.trim())
+    .filter(Boolean);
+
+  document.getElementById("volunteerProfileTitle").textContent = applicant.name || "Volunteer Profile";
+  document.getElementById("volunteerProfileSubtitle").textContent = `${applicant.email || ""}${applicant.city ? " | " + applicant.city : ""}`;
+  document.getElementById("volunteerProfileBody").innerHTML = `
+    <div class="profile-preview-grid mb-3">
+      <div class="profile-preview-stat">
+        <span class="text-muted">Confirmed Hours</span>
+        <strong>${formatHours(applicant.total_hours)}</strong>
+      </div>
+      <div class="profile-preview-stat">
+        <span class="text-muted">Application Status</span>
+        <strong>${escapeHTML(String(applicant.status || "pending"))}</strong>
+      </div>
+      <div class="profile-preview-stat">
+        <span class="text-muted">Current Opportunity</span>
+        <strong>${formatHours(applicant.hours_completed)} hrs</strong>
+      </div>
+    </div>
+
+    <div class="profile-preview-section mb-3">
+      <h6><i class="fas fa-screwdriver-wrench"></i> Skills</h6>
+      ${skills.length ? skills.map(skill => `<span class="profile-chip">${escapeHTML(skill)}</span>`).join("") : "<span class='text-muted'>No skills listed.</span>"}
+    </div>
+
+    <div class="profile-preview-section mb-3">
+      <h6><i class="fas fa-briefcase"></i> Past Completed Experiences</h6>
+      ${renderList(completedHistory, "No confirmed previous opportunities yet.")}
+    </div>
+
+    <div class="profile-preview-section">
+      <h6><i class="fas fa-comment-dots"></i> Profile Endorsements</h6>
+      ${profileEndorsements.length ? profileEndorsements.map(item => `
+        <div class="border rounded-3 p-3 mb-2 bg-white">
+          <div class="d-flex justify-content-between gap-2">
+            <strong>${escapeHTML(item.title || "Endorsement")}</strong>
+            <span class="badge bg-info text-dark">${Number(item.rating) || 0}/5</span>
+          </div>
+          <p class="mb-1 mt-2">${escapeHTML(item.comment || "")}</p>
+          ${item.strengths ? `<small class="text-muted"><strong>Strengths:</strong> ${escapeHTML(item.strengths)}</small><br>` : ""}
+          <small class="text-muted">${escapeHTML(item.ngo || "NGO")} | ${escapeHTML(item.opportunity || "Opportunity")}</small>
+        </div>
+      `).join("") : "<span class='text-muted'>No profile endorsements shared yet.</span>"}
+    </div>
+  `;
+
+  const modal = new bootstrap.Modal(document.getElementById("volunteerProfileModal"));
+  modal.show();
+}
+
+const volunteerFeedbackTags = [
+  "Reliable",
+  "Punctual",
+  "Strong communicator",
+  "Team player",
+  "Empathetic",
+  "Took initiative"
+];
+
+function toggleVolunteerTag(applicationId, tag) {
+  const button = document.querySelector(`[data-volunteer-feedback-app="${applicationId}"][data-tag="${CSS.escape(tag)}"]`);
+  if (button) button.classList.toggle("active");
+}
+
+function selectedVolunteerTags(applicationId) {
+  return Array.from(document.querySelectorAll(`[data-volunteer-feedback-app="${applicationId}"].active`))
+    .map(button => button.dataset.tag)
+    .filter(Boolean);
+}
+
+function updateVolunteerFeedbackCounter(applicationId) {
+  const textarea = document.getElementById(`vol-comment-${applicationId}`);
+  const counter = document.getElementById(`vol-comment-count-${applicationId}`);
+  if (textarea && counter) counter.textContent = `${textarea.value.length}/1200`;
+}
+
 const applicantParams = new URLSearchParams(window.location.search);
 const selectedOpportunityId = Number(applicantParams.get("opportunity_id"));
 const selectedOpportunityTitle = applicantParams.get("title")
@@ -165,20 +256,24 @@ function renderApplicants() {
         const hoursRequired = Number(applicant.hours_required) || 0;
         const applicationAnswers = parseApplicationAnswers(applicant.application_answers);
 
+        const opportunityEnded = isOpportunityFinished(applicant.end_date);
+
         let statusButtons = "";
-        if (status !== "accepted") {
-          statusButtons += `
-            <button class="btn btn-success btn-sm me-2"
-                    onclick="updateStatus(${applicant.id}, 'accepted')">
-              Accept
-            </button>`;
-        }
-        if (status !== "rejected") {
-          statusButtons += `
-            <button class="btn btn-danger btn-sm"
-                    onclick="updateStatus(${applicant.id}, 'rejected')">
-              Reject
-            </button>`;
+        if (!opportunityEnded) {
+          if (status !== "accepted") {
+            statusButtons += `
+              <button class="btn btn-success btn-sm me-2"
+                      onclick="updateStatus(${applicant.id}, 'accepted')">
+                Accept
+              </button>`;
+          }
+          if (status !== "rejected") {
+            statusButtons += `
+              <button class="btn btn-danger btn-sm"
+                      onclick="updateStatus(${applicant.id}, 'rejected')">
+                Reject
+              </button>`;
+          }
         }
 
         let attendanceHTML = "";
@@ -186,6 +281,11 @@ function renderApplicants() {
           attendanceHTML = `
             <div class="alert alert-success mt-3 mb-0">
               Attendance confirmed. ${formatHours(applicant.hours_completed)} hours were added to this volunteer.
+            </div>`;
+        } else if (applicant.completion_status === "no_show") {
+          attendanceHTML = `
+            <div class="alert alert-warning mt-3 mb-0">
+              Volunteer marked as no-show.
             </div>`;
         } else if (status === "accepted") {
           attendanceHTML = `
@@ -197,6 +297,10 @@ function renderApplicants() {
                 <button class="btn btn-primary"
                         onclick="confirmAttendance(${applicant.id})">
                   Confirm Attendance
+                </button>
+                <button class="btn btn-outline-danger"
+                        onclick="markNoShow(${applicant.id})">
+                  Mark No-show
                 </button>
               </div>
               <small class="text-muted">You can confirm attendance whenever the NGO has verified the volunteer's participation.</small>
@@ -210,6 +314,9 @@ function renderApplicants() {
             <div class="border rounded-3 p-3 mt-3 bg-white">
               <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <strong>Volunteer feedback submitted</strong>
+                <a class="btn btn-outline-primary btn-sm" href="ngo-feedback.html?opportunity_id=${selectedOpportunityId}&application_id=${applicant.id}">
+                  View Feedback
+                </a>
               </div>
               <small class="text-muted">This endorsement was sent to the volunteer. Feedback can only be submitted once.</small>
             </div>`
@@ -217,56 +324,18 @@ function renderApplicants() {
             <div class="border rounded-3 p-3 mt-3 bg-white">
               <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                 <strong>Leave volunteer feedback</strong>
+                <a class="btn btn-primary btn-sm" href="ngo-feedback.html?opportunity_id=${selectedOpportunityId}&application_id=${applicant.id}">
+                  Open Feedback Page
+                </a>
               </div>
-              <div class="row g-2">
-                <div class="col-md-3">
-                  <label class="form-label" for="vol-rating-${applicant.id}">Rating</label>
-                  <select id="vol-rating-${applicant.id}" class="form-select">
-                    ${[5, 4, 3, 2, 1].map(value => `
-                      <option value="${value}">
-                        ${value} star${value === 1 ? "" : "s"}
-                      </option>
-                    `).join("")}
-                  </select>
-                </div>
-                <div class="col-md-9">
-                  <label class="form-label" for="vol-title-${applicant.id}">Endorsement title</label>
-                  <input id="vol-title-${applicant.id}" class="form-control" maxlength="120"
-                         placeholder="Reliable, thoughtful team contributor"
-                         value="">
-                </div>
-                <div class="col-12">
-                  <label class="form-label" for="vol-comment-${applicant.id}">Feedback visible to the volunteer</label>
-                  <textarea id="vol-comment-${applicant.id}" class="form-control" rows="3" maxlength="1200"
-                            placeholder="Describe their contribution, attitude, reliability, and impact."></textarea>
-                </div>
-                <div class="col-12">
-                  <label class="form-label" for="vol-strengths-${applicant.id}">Strengths or skills noticed</label>
-                  <input id="vol-strengths-${applicant.id}" class="form-control" maxlength="800"
-                         placeholder="Communication, punctuality, empathy"
-                         value="">
-                </div>
-              </div>
-              <button class="btn btn-primary mt-3" onclick="saveVolunteerFeedback(${applicant.id})">
-                Save Feedback
-              </button>
+              <small class="text-muted">Feedback is completed on a dedicated page so applicant cards stay focused.</small>
             </div>`;
         }
 
-        const opportunityFeedbackHTML = applicant.opportunity_feedback_id ? `
-          <div class="border rounded-3 p-3 mt-3 bg-white">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-              <strong>Volunteer's feedback about this opportunity</strong>
-              <span class="badge bg-info text-dark">${Number(applicant.opportunity_feedback_rating) || 0}/5 rating</span>
-            </div>
-            <p class="mb-1">${escapeHTML(applicant.opportunity_feedback_comment || "")}</p>
-            ${applicant.opportunity_feedback_impact_story ? `<small class="text-muted"><strong>Impact note:</strong> ${escapeHTML(applicant.opportunity_feedback_impact_story)}</small>` : ""}
-          </div>
-        ` : "";
+        const opportunityFeedbackHTML = applicant.opportunity_feedback_id
+          ? `<span class="mini-stat">Volunteer submitted opportunity feedback</span>`
+          : "";
 
-        const historyHTML = completedHistory.length
-          ? `<ul class="mb-0">${completedHistory.map(item => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`
-          : "<span class='text-muted'>No confirmed previous opportunities yet.</span>";
         const profileEndorsementsHTML = profileEndorsements.length
           ? `<div class="mt-3">
               <strong>Profile endorsements shared by volunteer:</strong>
@@ -291,9 +360,13 @@ function renderApplicants() {
         listItem.innerHTML = `
           <div class="applicant-card-header">
             <div class="d-flex align-items-start gap-3">
-              <div class="applicant-avatar">${escapeHTML(initials(applicant.name))}</div>
+              <button class="applicant-avatar" type="button" onclick="openVolunteerProfile(${applicant.id})" aria-label="View ${escapeHTML(applicant.name)} profile">${escapeHTML(initials(applicant.name))}</button>
               <div>
-              <h5 class="mb-1">${escapeHTML(applicant.name)}</h5>
+              <h5 class="mb-1">
+                <button class="volunteer-name-button" type="button" onclick="openVolunteerProfile(${applicant.id})">
+                  ${escapeHTML(applicant.name)}
+                </button>
+              </h5>
               <div class="text-muted">${escapeHTML(applicant.email)}</div>
               <div class="text-muted">City: ${escapeHTML(applicant.city || "Not provided")}</div>
               </div>
@@ -302,29 +375,6 @@ function renderApplicants() {
           </div>
 
           <div class="applicant-card-body">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <strong>Applied for:</strong>
-              <div>${escapeHTML(applicant.opportunity_name)}</div>
-              <div class="text-muted">Ends: ${formatDate(applicant.end_date)}</div>
-              <div class="text-muted">Days: ${formatScheduleDays(applicant.schedule_days)}</div>
-              <div class="text-muted">Timing: ${formatTime(applicant.start_time)} - ${formatTime(applicant.end_time)}</div>
-              <div class="text-muted">Required hours: ${formatHours(hoursRequired)}</div>
-            </div>
-            <div class="col-md-6">
-              <strong>Volunteer record:</strong>
-              <div class="mini-stat-row">
-                <span class="mini-stat">${formatHours(applicant.total_hours)} confirmed hours</span>
-                <span class="mini-stat">${escapeHTML(applicant.skills || "Skills not provided")}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-3">
-            <strong>Previous completed opportunities:</strong>
-            ${historyHTML}
-          </div>
-
           ${profileEndorsementsHTML}
 
           ${applicationAnswers.length ? `
@@ -344,7 +394,6 @@ function renderApplicants() {
 
           ${attendanceHTML}
           ${feedbackHTML}
-          ${opportunityFeedbackHTML}
           </div>
         `;
 
@@ -356,7 +405,8 @@ function saveVolunteerFeedback(applicationId) {
   const rating = document.getElementById(`vol-rating-${applicationId}`).value;
   const endorsement_title = document.getElementById(`vol-title-${applicationId}`).value.trim();
   const comment = document.getElementById(`vol-comment-${applicationId}`).value.trim();
-  const strengths = document.getElementById(`vol-strengths-${applicationId}`).value.trim();
+  const strengthsInput = document.getElementById(`vol-strengths-${applicationId}`).value.trim();
+  const strengths = [strengthsInput, ...selectedVolunteerTags(applicationId)].filter(Boolean).join(", ");
 
   fetch(`api/feedback/volunteer/${applicationId}`, {
     method: "POST",
@@ -372,12 +422,11 @@ function saveVolunteerFeedback(applicationId) {
       return data;
     })
     .then(data => {
-      alert(data.message || "Feedback saved.");
-      loadApplicants();
+      showAlert(data.message || "Feedback saved.", () => loadApplicants());
     })
     .catch(err => {
       console.error("Error saving volunteer feedback:", err);
-      alert(err.message || "Could not save feedback.");
+      showAlert(err.message || "Could not save feedback.");
     });
 }
 
@@ -396,12 +445,11 @@ function updateStatus(applicationId, status) {
       return data;
     })
     .then(data => {
-      alert(data.message || `Application ${status} successfully.`);
-      loadApplicants();
+      showAlert(data.message || `Application ${status} successfully.`, () => loadApplicants());
     })
     .catch(err => {
       console.error("Error updating status:", err);
-      alert(err.message || "Could not update status.");
+      showAlert(err.message || "Could not update status.");
     });
 }
 
@@ -410,10 +458,11 @@ function confirmAttendance(applicationId) {
   const hoursCompleted = Number(input && input.value);
 
   if (!Number.isFinite(hoursCompleted) || hoursCompleted < 0.25) {
-    alert("Please enter completed hours of at least 0.25.");
+    showAlert("Please enter completed hours of at least 0.25.");
     return;
   }
 
+  showConfirm("Confirming attendance will unlock this volunteer's certificate and record completed hours. Continue?", () => {
   fetch(`api/applications/${applicationId}/attendance`, {
     method: "PATCH",
     headers: {
@@ -428,20 +477,42 @@ function confirmAttendance(applicationId) {
       return data;
     })
     .then(data => {
-      alert(data.message || "Attendance confirmed.");
-      loadApplicants();
+      showAlert(data.message || "Attendance confirmed.", () => loadApplicants());
     })
     .catch(err => {
       console.error("Error confirming attendance:", err);
-      alert(err.message || "Could not confirm attendance.");
+      showAlert(err.message || "Could not confirm attendance.");
     });
+  });
+}
+
+function markNoShow(applicationId) {
+  showConfirm("Mark this accepted volunteer as no-show? They will not receive hours or a certificate.", () => {
+  fetch(`api/applications/${applicationId}/no-show`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+  })
+    .then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    })
+    .then(data => {
+      showAlert(data.message || "Volunteer marked as no-show.", () => loadApplicants());
+    })
+    .catch(err => {
+      console.error("Error marking no-show:", err);
+      showAlert(err.message || "Could not mark no-show.");
+    });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
   if (!token) {
-    alert("Please login first.");
-    window.location.href = "login.html";
+    showAlert("Please login first.", () => { window.location.href = "login.html"; });
     return;
   }
 

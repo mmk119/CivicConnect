@@ -6,8 +6,7 @@ function getOpportunityId() {
 document.addEventListener("DOMContentLoaded", function() {
     const token = localStorage.getItem("token");
     if (!token) {
-        alert("Session expired. Please log in again.");
-        window.location.href = "login.html";
+        showAlert("Session expired. Please log in again.", () => { window.location.href = "login.html"; });
         return;
     }
 
@@ -17,9 +16,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("opportunityId").value = getOpportunityId();
     } catch (error) {
         console.error("Error decoding token:", error);
-        alert("Invalid session. Please log in again.");
-        localStorage.removeItem("token");
-        window.location.href = "login.html";
+        showAlert("Invalid session. Please log in again.", () => { localStorage.removeItem("token"); window.location.href = "login.html"; });
     }
 });
 
@@ -27,8 +24,7 @@ document.addEventListener("DOMContentLoaded", function() {
 function applyForOpportunity() {
     const token = localStorage.getItem("token");
     if (!token) {
-        alert("Session expired. Please log in again.");
-        window.location.href = "login.html";
+        showAlert("Session expired. Please log in again.", () => { window.location.href = "login.html"; });
         return;
     }
 
@@ -38,7 +34,7 @@ function applyForOpportunity() {
     const phone = document.getElementById("phone").value;
 
     if (!fullName || !email || !phone) {
-        alert("Please fill in all fields before applying.");
+        showAlert("Please fill in all fields before applying.");
         return;
     }
 
@@ -54,8 +50,7 @@ function applyForOpportunity() {
         })
         .then(response => response.json())
         .then(data => {
-            alert(data.message);
-            window.location.href = "index.html";
+            showAlert(data.message, () => { window.location.href = "index.html"; });
         })
         .catch(error => console.error("Error applying for opportunity:", error));
 }

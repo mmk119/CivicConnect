@@ -1,10 +1,10 @@
+
 function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("userRole");
     localStorage.removeItem("user_id");
     localStorage.removeItem("ngo_id");
     localStorage.removeItem("opportunityPreview");
-    alert("You have been logged out.");
     window.location.href = "login.html";
 }
 
@@ -24,21 +24,18 @@ function requireNgoAccess() {
     const payload = getTokenPayload();
 
     if (!payload) {
-        alert("You must be logged in to access this page.");
         window.location.href = "login.html";
         return null;
     }
 
     const currentTime = Math.floor(Date.now() / 1000);
     if (payload.exp < currentTime) {
-        alert("Session expired. Please log in again.");
         localStorage.removeItem("token");
         window.location.href = "login.html";
         return null;
     }
 
     if (payload.role !== "NGO" || !payload.ngo_id) {
-        alert("Only NGO accounts can create volunteering opportunities.");
         window.location.href = "opportunities.html";
         return null;
     }
@@ -84,44 +81,51 @@ function calculateScheduleHours() {
     const selectedDays = getSelectedScheduleDays();
 
     if (!startDate || !endDate || selectedDays.length === 0 || !startTime || !endTime) {
-        return { hours: 0, message: "Choose dates, days, and timing", breakdown: "" };
+        return { hours: 0, sessions: 0, duration: 0, message: "Choose dates, days, and timing", breakdown: "", dates: [] };
     }
 
     if (endDate < startDate) {
-        return { hours: 0, message: "End date must be the same as or after start date", breakdown: "" };
+        return { hours: 0, sessions: 0, duration: 0, message: "End date must be the same as or after start date", breakdown: "", dates: [] };
     }
 
     const startMinutes = minutesFromTime(startTime);
     const endMinutes = minutesFromTime(endTime);
 
     if (startMinutes === null || endMinutes === null) {
-        return { hours: 0, message: "Start and end time must be valid", breakdown: "" };
+        return { hours: 0, sessions: 0, duration: 0, message: "Start and end time must be valid", breakdown: "", dates: [] };
     }
 
     const minutesPerSession = endMinutes - startMinutes;
 
     if (minutesPerSession <= 0) {
-        return { hours: 0, message: "End time must be after start time", breakdown: "" };
+        return { hours: 0, sessions: 0, duration: 0, message: "End time must be after start time", breakdown: "", dates: [] };
     }
 
     const jsDayToCode = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     let sessions = 0;
+    const matchingDates = [];
     const cursor = new Date(startDate);
     while (cursor <= endDate) {
-        if (selectedDays.includes(jsDayToCode[cursor.getDay()])) sessions += 1;
+        if (selectedDays.includes(jsDayToCode[cursor.getDay()])) {
+            sessions += 1;
+            matchingDates.push(new Date(cursor));
+        }
         cursor.setDate(cursor.getDate() + 1);
     }
 
     if (sessions === 0) {
-        return { hours: 0, message: "No selected weekdays fall inside this date range", breakdown: "" };
+        return { hours: 0, sessions: 0, duration: 0, message: "No selected weekdays fall inside this date range", breakdown: "", dates: [] };
     }
 
     const duration = Math.round((minutesPerSession / 60) * 100) / 100;
     const hours = Math.round((sessions * duration) * 100) / 100;
     return {
         hours,
+        sessions,
+        duration,
         message: `${formatHours(hours)} total volunteer hours`,
-        breakdown: `${sessions} matching session${sessions === 1 ? "" : "s"} x ${formatHours(duration)} hour${duration === 1 ? "" : "s"} per session`
+        breakdown: `${sessions} matching session${sessions === 1 ? "" : "s"} x ${formatHours(duration)} hour${duration === 1 ? "" : "s"} per session`,
+        dates: matchingDates
     };
 }
 
@@ -131,6 +135,31 @@ function updateHoursPreview() {
     document.getElementById("hoursPreview").textContent = result.message;
     const breakdown = document.getElementById("hoursBreakdown");
     if (breakdown) breakdown.textContent = result.breakdown || "";
+    const summary = document.querySelector(".schedule-summary");
+    if (summary) summary.classList.toggle("invalid", !result.hours);
+    const preview = document.getElementById("schedulePreview");
+    if (preview) {
+        const firstDates = (result.dates || []).slice(0, 6);
+        preview.innerHTML = result.hours
+            ? [
+                `<span>${formatScheduleDays(getSelectedScheduleDays())}</span>`,
+                `<span>${formatTime(document.getElementById("start_time").value)}-${formatTime(document.getElementById("end_time").value)}</span>`,
+                `<span>${result.sessions} session${result.sessions === 1 ? "" : "s"}</span>`,
+                ...firstDates.map(date => `<span>${date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>`),
+                result.dates.length > firstDates.length ? `<span>+${result.dates.length - firstDates.length} more</span>` : ""
+            ].join("")
+            : "";
+    }
+    const hasScheduleInput = document.getElementById("start_date").value ||
+        document.getElementById("end_date").value ||
+        document.getElementById("start_time").value ||
+        document.getElementById("end_time").value ||
+        getSelectedScheduleDays().length > 0;
+    const impossibleSchedule = hasScheduleInput && !result.hours && result.message !== "Choose dates, days, and timing";
+    const submitBtn = document.getElementById("submitBtn");
+    const previewBtn = document.getElementById("previewBtn");
+    if (submitBtn) submitBtn.disabled = impossibleSchedule;
+    if (previewBtn && !editingOpportunityId) previewBtn.disabled = impossibleSchedule;
     return result;
 }
 
@@ -204,7 +233,6 @@ async function loadNgoApprovalStatus() {
 function loadOpportunities() {
     const token = localStorage.getItem("token");
     if (!token) {
-        alert("Please login first.");
         window.location.href = "login.html";
         return;
     }
@@ -231,13 +259,18 @@ function loadOpportunities() {
             loadedOpportunities.forEach(op => {
                 const li = document.createElement("li");
                 li.className = "list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2";
+                const lifecycle = op.lifecycle_status || op.status || "open";
+                const canClose = lifecycle === "open" || lifecycle === "in_progress";
+                const canFinalize = lifecycle !== "completed" && lifecycle !== "archived";
                 li.innerHTML = `
                     <span>${op.title} - ${op.field || "No field"} - ${formatScheduleDays(op.schedule_days)} ${formatTime(op.start_time)}-${formatTime(op.end_time)} - ${formatHours(op.hours_required)} hours - ${new Date(op.start_date).toDateString()} - ${op.location}<br>
-                    <small>Applicants: ${op.pending_count || 0} pending / ${op.accepted_count || 0} accepted / ${op.rejected_count || 0} rejected | Capacity: ${op.accepted_count || 0}/${op.capacity || 0}</small></span>
+                    <small>Status: ${lifecycle}${op.needs_attendance_review ? " | Needs attendance review" : ""} | Applicants: ${op.pending_count || 0} pending / ${op.accepted_count || 0} accepted / ${op.rejected_count || 0} rejected | Capacity: ${op.accepted_count || 0}/${op.capacity || 0}</small></span>
                     <span class="d-flex flex-wrap gap-2">
                         <button class="btn btn-info btn-sm" onclick="viewApplicants(${op.opportunity_id}, '${encodeURIComponent(op.title || "Opportunity")}')">
                             View Applicants
                         </button>
+                        ${canClose ? `<button class="btn btn-warning btn-sm" onclick="closeOpportunity(${op.opportunity_id})">Close Applications</button>` : ""}
+                        ${canFinalize ? `<button class="btn btn-success btn-sm" onclick="finalizeOpportunity(${op.opportunity_id})">Finalize</button>` : ""}
                         <button class="btn btn-secondary btn-sm" onclick="editOpportunity(${op.opportunity_id})">
                             Edit
                         </button>
@@ -253,6 +286,43 @@ function loadOpportunities() {
             document.getElementById("opportunitiesList").innerHTML =
                 "<li class='list-group-item text-danger'>Failed to load opportunities.</li>";
         });
+}
+
+function patchOpportunityLifecycle(opportunityId, action, confirmMessage) {
+    const payload = requireNgoAccess();
+    if (!payload) return;
+    const doAction = () => {
+        fetch(`/api/opportunities/${opportunityId}/${action}`, {
+            method: "PATCH",
+            headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+        })
+            .then(async res => {
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                return data;
+            })
+            .then(data => {
+                showAlert(data.message || "Opportunity updated.", () => loadOpportunities(payload.ngo_id));
+            })
+            .catch(err => showAlert(err.message || "Could not update opportunity."));
+    };
+    if (confirmMessage) {
+        showConfirm(confirmMessage, doAction);
+    } else {
+        doAction();
+    }
+}
+
+function closeOpportunity(opportunityId) {
+    patchOpportunityLifecycle(opportunityId, "close", "Close applications for this opportunity?");
+}
+
+function finalizeOpportunity(opportunityId) {
+    patchOpportunityLifecycle(
+        opportunityId,
+        "finalize",
+        "Finalize this opportunity as completed? Every accepted volunteer must be attended or no-show."
+    );
 }
 
 function submitOpportunity() {
@@ -274,17 +344,17 @@ function submitOpportunity() {
     const hoursRequired = scheduleResult.hours;
 
     if (!title || !field || !description || !startDate || !endDate || !capacity || !location || scheduleDays.length === 0 || !startTime || !endTime) {
-        alert("Please fill in all fields before submitting.");
+        showAlert("Please fill in all fields before submitting.");
         return;
     }
 
     if (!scheduleResult.hours) {
-        alert(scheduleResult.message);
+        showAlert(scheduleResult.message);
         return;
     }
 
     if (!Number.isInteger(capacity) || capacity < 1) {
-        alert("Number of volunteers needed must be a positive whole number.");
+        showAlert("Number of volunteers needed must be a positive whole number.");
         return;
     }
 
@@ -318,41 +388,39 @@ function submitOpportunity() {
         .then(response => response.json().then(data => ({ ok: response.ok, data })))
         .then(({ ok, data }) => {
             if (!ok) {
-                alert(data.error || "Failed to submit opportunity.");
+                showAlert(data.error || "Failed to submit opportunity.");
                 return;
             }
-
-            alert(data.message || "Opportunity submitted successfully!");
-            localStorage.removeItem("opportunityPreview");
-            cancelEditOpportunity(false);
-            updateHoursPreview();
-            loadOpportunities(payload.ngo_id);
+            showAlert(data.message || "Opportunity submitted successfully!", () => {
+                localStorage.removeItem("opportunityPreview");
+                cancelEditOpportunity(false);
+                updateHoursPreview();
+                loadOpportunities(payload.ngo_id);
+            });
         })
         .catch(error => {
             console.error("Error submitting opportunity:", error);
-            alert("Failed to submit opportunity.");
+            showAlert("Failed to submit opportunity.");
         });
 }
 
 function deleteOpportunity(opportunityId) {
     const payload = requireNgoAccess();
     if (!payload) return;
-    if (!confirm("Are you sure you want to delete this opportunity?")) return;
-
-    const token = localStorage.getItem("token");
-
-    fetch(`/api/opportunities/${opportunityId}`, {
-        method: "DELETE",
-        headers: {
-            "Authorization": `Bearer ${token}`
-        }
-    })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message || data.error || "Request completed.");
-            loadOpportunities(payload.ngo_id);
+    showConfirm("Are you sure you want to delete this opportunity?", () => {
+        fetch(`/api/opportunities/${opportunityId}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
         })
-        .catch(error => console.error("Error deleting opportunity:", error));
+            .then(response => response.json())
+            .then(data => {
+                showAlert(data.message || data.error || "Request completed.", () => loadOpportunities(payload.ngo_id));
+            })
+            .catch(error => {
+                console.error("Error deleting opportunity:", error);
+                showAlert("Failed to delete opportunity.");
+            });
+    });
 }
 
 function loadPreviewIntoForm() {
@@ -385,7 +453,7 @@ function loadPreviewIntoForm() {
 function editOpportunity(opportunityId) {
     const opportunity = loadedOpportunities.find(op => Number(op.opportunity_id) === Number(opportunityId));
     if (!opportunity) {
-        alert("Opportunity not found.");
+        showAlert("Opportunity not found.");
         return;
     }
 
@@ -424,7 +492,7 @@ function cancelEditOpportunity(showMessage = true) {
     document.getElementById("previewBtn").disabled = false;
     document.getElementById("cancelEditBtn").classList.add("d-none");
     updateHoursPreview();
-    if (showMessage) alert("Edit cancelled.");
+    if (showMessage) showAlert("Edit cancelled.");
 }
 
 function showPreview() {
@@ -446,17 +514,17 @@ function showPreview() {
     const hoursRequired = scheduleResult.hours;
 
     if (!title || !field || !description || !startDate || !endDate || !capacity || !location || scheduleDays.length === 0 || !startTime || !endTime) {
-        alert("Please fill in all required fields before previewing.");
+        showAlert("Please fill in all required fields before previewing.");
         return;
     }
 
     if (!scheduleResult.hours) {
-        alert(scheduleResult.message);
+        showAlert(scheduleResult.message);
         return;
     }
 
     if (!Number.isInteger(capacity) || capacity < 1) {
-        alert("Number of volunteers needed must be a positive whole number.");
+        showAlert("Number of volunteers needed must be a positive whole number.");
         return;
     }
 
@@ -484,7 +552,7 @@ function viewApplicants(opportunityId, encodedTitle = "") {
     if (!payload) return;
 
     if (!opportunityId) {
-        alert("Please choose a specific opportunity first.");
+        showAlert("Please choose a specific opportunity first.");
         return;
     }
 

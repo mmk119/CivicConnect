@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Application History - CivicConnect</title>
-  <script src="notifications.js"></script>
+    <script src="notifications.js"></script>
+    <script src="app-utils.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * {
@@ -17,7 +18,9 @@
       min-height: 100vh;
       font-family: Arial, sans-serif;
       color: #f7fbff;
-      background: linear-gradient(135deg, #071a33 0%, #102b50 45%, #0d203c 100%);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(67, 214, 216, 0.15), transparent 28%),
+        linear-gradient(135deg, #071a33 0%, #102b50 45%, #0d203c 100%);
     }
 
     .navbar {
@@ -73,16 +76,21 @@
     }
 
     .page {
-      width: min(1180px, calc(100% - 48px));
-      margin: 44px auto;
+      width: min(1440px, calc(100% - 64px));
+      margin: 38px auto 64px;
     }
 
     .hero {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 24px;
-      margin-bottom: 26px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+      align-items: end;
+      gap: 28px;
+      margin-bottom: 18px;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.07);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
     }
 
     .eyebrow {
@@ -106,16 +114,16 @@
     .hero p {
       color: #cfd9e6;
       font-size: 1.05rem;
-      max-width: 620px;
+      max-width: 760px;
       line-height: 1.6;
     }
 
     .summary-card {
-      min-width: 210px;
-      padding: 18px 20px;
+      min-width: 0;
+      padding: 20px;
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 14px;
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.1);
       text-align: center;
     }
 
@@ -141,13 +149,13 @@
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 24px;
+      margin: 22px 0;
     }
 
     .schedule-actions {
       display: flex;
       justify-content: flex-end;
-      margin: -8px 0 22px;
+      margin: -58px 0 24px;
     }
 
     .filter-btn {
@@ -164,63 +172,74 @@
       background: #1285f3;
       border-color: #1285f3;
       color: #fff;
+      box-shadow: 0 10px 24px rgba(18, 133, 243, 0.24);
     }
 
     .history-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 22px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 18px;
+      align-items: start;
     }
 
     .history-card {
       position: relative;
       overflow: hidden;
-      min-height: 300px;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.94);
+      border-radius: 16px;
+      background: #f8fbff;
       color: #10253d;
-      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
     }
 
     .history-card::before {
       content: "";
-      height: 5px;
+      height: 4px;
       background: linear-gradient(90deg, #1285f3, #43d6d8);
     }
 
     .card-body {
       flex: 1;
-      padding: 26px 26px 18px;
+      padding: 18px;
     }
 
     .card-top {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: nowrap;
+    }
+
+    .card-top-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
     }
 
     .field-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 11px;
-      border-radius: 8px;
+      padding: 5px 8px;
+      border-radius: 7px;
       background: #e7f4ff;
       color: #0877da;
-      font-size: 0.82rem;
+      font-size: 0.74rem;
       font-weight: 800;
+      max-width: 68%;
     }
 
     .status-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 12px;
+      padding: 6px 9px;
       border-radius: 999px;
       font-size: 0.82rem;
       font-weight: 900;
@@ -242,57 +261,322 @@
       color: #b42323;
     }
 
+    .status-completed {
+      background: #d9f5df;
+      color: #137b2c;
+    }
+
+    .status-no-show {
+      background: #fce8e8;
+      color: #8b1a1a;
+    }
+
+    .status-withdrawn {
+      background: #f0f0f0;
+      color: #555;
+    }
+
+    .progress-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+      gap: 6px;
+      margin: 14px 0;
+    }
+
+    .progress-step {
+      min-height: 38px;
+      padding: 7px 6px;
+      border: 1px solid #dce7f1;
+      border-radius: 10px;
+      background: #fff;
+      color: #607388;
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .progress-step i {
+      display: block;
+      margin-bottom: 3px;
+      color: #94a6b8;
+    }
+
+    .progress-step.done {
+      border-color: #bcebc9;
+      background: #ecfbf1;
+      color: #11642a;
+    }
+
+    .progress-step.done i {
+      color: #168a3a;
+    }
+
+    .progress-step.current {
+      border-color: #b9dcff;
+      background: #eef7ff;
+      color: #0877da;
+    }
+
+    .progress-step.blocked {
+      border-color: #ffe0a3;
+      background: #fff8e6;
+      color: #805100;
+    }
+
     .history-card h2 {
-      font-size: 1.35rem;
-      margin-bottom: 10px;
+      font-size: 1.12rem;
+      line-height: 1.18;
+      margin-bottom: 8px;
       color: #08233c;
     }
 
+    .card-subtitle {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #31506d;
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .pill + .pill::before {
+      content: "";
+      width: 4px;
+      height: 4px;
+      margin-right: 1px;
+      border-radius: 50%;
+      background: #9db0c2;
+    }
+
     .description {
-      min-height: 48px;
+      min-height: 0;
       color: #486179;
-      line-height: 1.5;
-      margin-bottom: 18px;
+      line-height: 1.45;
+      margin-bottom: 12px;
+      font-size: 0.88rem;
     }
 
     .meta-list {
       display: grid;
-      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
       color: #486179;
       font-weight: 600;
+      font-size: 0.84rem;
+    }
+
+    .meta-heading {
+      margin: 14px 0 8px;
+      color: #183854;
+      font-size: 0.92rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-list span {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      min-height: 34px;
+      padding: 8px 9px;
+      border: 1px solid #e2ebf3;
+      border-radius: 10px;
+      background: #fff;
+      line-height: 1.35;
     }
 
     .meta-list i {
+      flex: 0 0 18px;
       width: 18px;
       color: #1285f3;
-      margin-right: 7px;
+      margin: 2px 0 0;
+    }
+
+    .schedule-panel {
+      margin-top: 12px;
+    }
+
+    .card-extra {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .history-card.expanded .card-extra {
+      display: block;
+    }
+
+    .summary-line {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 2px;
+      color: #385672;
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .summary-line span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .summary-line i {
+      width: 16px;
+      color: #1285f3;
+    }
+
+    .schedule-panel h3 {
+      margin-bottom: 8px;
+      color: #0c3359;
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .schedule-grid-card {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .schedule-item {
+      display: flex;
+      gap: 8px;
+      min-height: 46px;
+      padding: 9px 10px;
+      border: 1px solid #dce7f1;
+      border-radius: 9px;
+      background: #fff;
+      color: #385672;
+      font-weight: 800;
+      line-height: 1.35;
+      font-size: 0.82rem;
+    }
+
+    .schedule-item i {
+      flex: 0 0 16px;
+      margin-top: 1px;
+      color: #1285f3;
+      font-size: 0.92rem;
+    }
+
+    .schedule-item small {
+      display: block;
+      margin-bottom: 2px;
+      color: #7a8ea2;
+      font-size: 0.65rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .card-actions {
-      display: flex;
-      gap: 12px;
-      padding: 18px 26px;
-      background: #f4f6f8;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 14px 20px;
+      background: #eef4f9;
     }
 
     .details-link {
-      flex: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      min-height: 46px;
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 10px;
       border: 1px solid #cdd8e3;
       border-radius: 10px;
       color: #08233c;
       text-decoration: none;
       font-weight: 800;
+      font-size: 0.9rem;
       background: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toggle-details {
+      border-color: #b9d5ef;
+      background: #eef7ff;
+      color: #0c5ea8;
+    }
+
+    .more-actions {
+      position: relative;
+    }
+
+    .menu-button {
+      width: 46px;
+      padding: 0;
+    }
+
+    .action-menu {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
+      z-index: 10;
+      display: none;
+      min-width: 210px;
+      padding: 8px;
+      border: 1px solid #cdd8e3;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 18px 38px rgba(16, 37, 61, 0.2);
+    }
+
+    .action-menu.open {
+      display: grid;
+      gap: 6px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 40px;
+      padding: 9px 10px;
+      border-radius: 9px;
+      color: #10253d;
+      text-decoration: none;
+      font-weight: 800;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .menu-item:hover {
+      background: #eef7ff;
+    }
+
+    .details-link:hover,
+    .feedback-button:hover,
+    .filter-btn:hover {
+      transform: translateY(-1px);
     }
 
     .feedback-panel {
-      padding: 18px 26px 24px;
+      margin: 0 20px 20px;
+      padding: 16px;
       border-top: 1px solid #e1e8ef;
+      border: 1px solid #dce7f1;
+      border-radius: 14px;
       background: #fff;
     }
 
@@ -347,6 +631,141 @@
       color: #12304c;
       background: #eef8f8;
       border: 1px solid #c9eeee;
+    }
+
+    .certificate-status {
+      margin: 0 20px 16px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #d9e4ef;
+      color: #405a73;
+      font-weight: 700;
+    }
+
+    .certificate-status.ready {
+      background: #ecfbf1;
+      border-color: #bcebc9;
+      color: #11642a;
+    }
+
+    .certificate-status.pending {
+      background: #fff8e6;
+      border-color: #ffe0a3;
+      color: #805100;
+    }
+
+    .certificate-meta {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .feedback-steps {
+      display: grid;
+      gap: 14px;
+    }
+
+    .step-label {
+      display: block;
+      margin-bottom: 7px;
+      color: #27435e;
+      font-size: 0.9rem;
+      font-weight: 900;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .feedback-tag {
+      border: 1px solid #c9d8e8;
+      border-radius: 999px;
+      padding: 8px 11px;
+      background: #f8fbff;
+      color: #25435f;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .feedback-tag.active {
+      border-color: #1285f3;
+      background: #e7f4ff;
+      color: #0877da;
+    }
+
+    .char-counter {
+      margin-top: 5px;
+      text-align: right;
+      color: #6b7f93;
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .certificate-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(5, 18, 34, 0.7);
+    }
+
+    .certificate-modal.open {
+      display: flex;
+    }
+
+    .certificate-dialog {
+      width: min(620px, 100%);
+      overflow: hidden;
+      border-radius: 16px;
+      background: #fff;
+      color: #10253d;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+    }
+
+    .certificate-preview {
+      margin: 22px;
+      padding: 28px;
+      border: 6px solid #1285f3;
+      text-align: center;
+      font-family: Georgia, serif;
+    }
+
+    .certificate-preview h2 {
+      margin: 8px 0 14px;
+      font-size: 1.8rem;
+    }
+
+    .certificate-dialog-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 22px 22px;
+    }
+
+    .certificate-dialog-actions button {
+      flex: 1;
+      min-height: 42px;
+      border: 1px solid #cdd8e3;
+      border-radius: 10px;
+      background: #fff;
+      color: #10253d;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .certificate-dialog-actions .primary {
+      border-color: #1285f3;
+      background: #1285f3;
+      color: #fff;
     }
 
     .rating-line {
@@ -404,6 +823,10 @@
         flex-direction: column;
       }
 
+      .hero {
+        display: flex;
+      }
+
       .summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -415,6 +838,25 @@
 
       .card-actions {
         padding: 16px;
+      }
+
+      .history-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-list,
+      .progress-strip,
+      .schedule-grid-card {
+        grid-template-columns: 1fr;
+      }
+
+      .schedule-actions {
+        justify-content: stretch;
+        margin: 0 0 22px;
+      }
+
+      .schedule-actions .filter-btn {
+        width: 100%;
       }
 
       .feedback-grid {
@@ -467,7 +909,9 @@
       <button type="button" class="filter-btn active" data-filter="all">All</button>
       <button type="button" class="filter-btn" data-filter="pending">Pending</button>
       <button type="button" class="filter-btn" data-filter="accepted">Accepted</button>
+      <button type="button" class="filter-btn" data-filter="completed">Completed</button>
       <button type="button" class="filter-btn" data-filter="rejected">Rejected</button>
+      <button type="button" class="filter-btn" data-filter="withdrawn">Withdrawn</button>
     </div>
 
     <div class="schedule-actions">
@@ -481,10 +925,23 @@
     </section>
   </main>
 
+  <div class="certificate-modal" id="certificate-modal" role="dialog" aria-modal="true" aria-labelledby="certificate-preview-title">
+    <div class="certificate-dialog">
+      <div class="certificate-preview" id="certificate-preview"></div>
+      <div class="certificate-dialog-actions">
+        <button type="button" onclick="closeCertificatePreview()">Close</button>
+        <button type="button" onclick="copyCurrentCertificateLink()">Copy Verification Link</button>
+        <button type="button" class="primary" onclick="openCurrentCertificate()">Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const token = localStorage.getItem("token");
     let applications = [];
     let activeFilter = "all";
+    let currentCertificateApplicationId = null;
+    let currentCertificateVerifyUrl = "";
 
     function clearAuthStorage() {
       localStorage.removeItem("token");
@@ -683,7 +1140,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function truncateText(value, length = 110) {
+    function truncateText(value, length = 82) {
       if (!value) return "No description provided.";
       return value.length > length ? `${value.slice(0, length)}...` : value;
     }
@@ -697,14 +1154,162 @@
         .replace(/'/g, "&#039;");
     }
 
+    function resolvedStatus(app) {
+      if (app.completion_status === "attended") return "completed";
+      if (app.completion_status === "no_show") return "no-show";
+      return app.status || "pending";
+    }
+
     function statusIcon(status) {
-      if (status === "accepted") return "fa-circle-check";
-      if (status === "rejected") return "fa-circle-xmark";
+      if (status === "accepted" || status === "completed") return "fa-circle-check";
+      if (status === "rejected" || status === "no-show") return "fa-circle-xmark";
+      if (status === "withdrawn") return "fa-circle-minus";
       return "fa-hourglass-half";
     }
 
-    function canLeaveOpportunityFeedback(app) {
-      return app.status === "accepted" && app.attendance_confirmed === "YES";
+    function scheduleSummary(app) {
+      return `${formatScheduleDays(app.schedule_days)} | ${formatTime(app.start_time)}-${formatTime(app.end_time)} | ${formatHours(app.hours_required)} hrs total`;
+    }
+
+    function certificateState(app) {
+      if (app.status !== "accepted") {
+        return {
+          key: "not-eligible",
+          label: "Not eligible",
+          message: "Certificate unlocks after your application is accepted and attendance is confirmed."
+        };
+      }
+      if (app.attendance_confirmed !== "YES") {
+        return {
+          key: "pending",
+          label: "Attendance pending",
+          message: "Certificate unlocks after the NGO confirms your attendance."
+        };
+      }
+      if (localStorage.getItem(`certificateDownloaded:${app.application_id}`) === "true") {
+        return {
+          key: "ready",
+          label: "Downloaded",
+          message: "You have opened this certificate before. You can print it again or copy the verification link."
+        };
+      }
+      return {
+        key: "ready",
+        label: "Ready to download",
+        message: "Your certificate is ready. You can preview it, print it, or copy its verification link."
+      };
+    }
+
+    function progressStrip(app) {
+      const accepted = app.status === "accepted";
+      const withdrawn = app.status === "withdrawn";
+      const rejected = app.status === "rejected";
+      const attended = app.attendance_confirmed === "YES";
+      const noShow = app.completion_status === "no_show";
+      const hasCertificate = accepted && attended;
+      const hasFeedback = Boolean(app.opportunity_feedback_id);
+      return `
+        <div class="progress-strip" aria-label="Application progress">
+          <div class="progress-step done">
+            <i class="fas fa-paper-plane"></i>
+            Applied
+          </div>
+          <div class="progress-step ${accepted ? "done" : (rejected || withdrawn) ? "blocked" : "current"}">
+            <i class="fas ${accepted ? "fa-circle-check" : rejected ? "fa-circle-xmark" : withdrawn ? "fa-circle-minus" : "fa-hourglass-half"}"></i>
+            ${accepted ? "Accepted" : rejected ? "Rejected" : withdrawn ? "Withdrawn" : "Pending"}
+          </div>
+          <div class="progress-step ${attended ? "done" : noShow ? "blocked" : accepted ? "current" : "blocked"}">
+            <i class="fas ${attended ? "fa-clipboard-check" : noShow ? "fa-user-xmark" : "fa-user-clock"}"></i>
+            ${attended ? "Attended" : noShow ? "No-show" : "Attendance"}
+          </div>
+          <div class="progress-step ${hasCertificate ? "done" : "blocked"}">
+            <i class="fas fa-certificate"></i>
+            ${hasCertificate ? "Certificate" : "Locked"}
+          </div>
+          <div class="progress-step ${hasFeedback ? "done" : attended ? "current" : "blocked"}">
+            <i class="fas fa-star"></i>
+            ${hasFeedback ? "Feedback" : attended ? "Feedback" : "Locked"}
+          </div>
+        </div>
+      `;
+    }
+
+    function schedulePanel(app) {
+      return `
+        <div class="schedule-panel">
+          <h3>Schedule</h3>
+          <div class="schedule-grid-card">
+            <div class="schedule-item">
+              <i class="fas fa-calendar-plus"></i>
+              <span><small>Applied</small>${formatDate(app.applied_at)}</span>
+            </div>
+            <div class="schedule-item">
+              <i class="fas fa-calendar-days"></i>
+              <span><small>Opportunity Dates</small>${formatDate(app.start_date)} - ${formatDate(app.end_date)}</span>
+            </div>
+            <div class="schedule-item">
+              <i class="fas fa-calendar-week"></i>
+              <span><small>Days</small>${formatScheduleDays(app.schedule_days)}</span>
+            </div>
+            <div class="schedule-item">
+              <i class="fas fa-business-time"></i>
+              <span><small>Time</small>${formatTime(app.start_time)} - ${formatTime(app.end_time)}</span>
+            </div>
+            <div class="schedule-item">
+              <i class="fas fa-clock"></i>
+              <span><small>Required Hours</small>${formatHours(app.hours_required)} hours</span>
+            </div>
+            <div class="schedule-item">
+              <i class="fas fa-award"></i>
+              <span><small>Confirmed Hours</small>${app.attendance_confirmed === "YES" ? `${formatHours(app.hours_completed)} hours completed` : "Not confirmed yet"}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleCardDetails(applicationId) {
+      const card = document.getElementById(`application-card-${applicationId}`);
+      const button = document.getElementById(`toggle-card-${applicationId}`);
+      if (!card || !button) return;
+      const expanded = card.classList.toggle("expanded");
+      button.innerHTML = expanded
+        ? '<i class="fas fa-chevron-up"></i> Less'
+        : '<i class="fas fa-chevron-down"></i> More';
+    }
+
+    function toggleActionMenu(applicationId) {
+      document.querySelectorAll(".action-menu.open").forEach(menu => {
+        if (menu.id !== `action-menu-${applicationId}`) menu.classList.remove("open");
+      });
+      const menu = document.getElementById(`action-menu-${applicationId}`);
+      if (menu) menu.classList.toggle("open");
+    }
+
+    const feedbackTags = [
+      "Well organized",
+      "Clear communication",
+      "Meaningful work",
+      "Supportive team",
+      "Needed better coordination",
+      "Good for first-time volunteers"
+    ];
+
+    function toggleFeedbackTag(applicationId, tag) {
+      const button = document.querySelector(`[data-feedback-tag="${applicationId}-${CSS.escape(tag)}"]`);
+      if (button) button.classList.toggle("active");
+    }
+
+    function selectedFeedbackTags(applicationId) {
+      return Array.from(document.querySelectorAll(`[data-feedback-app="${applicationId}"].active`))
+        .map(button => button.dataset.tag)
+        .filter(Boolean);
+    }
+
+    function updateFeedbackCounter(applicationId) {
+      const textarea = document.getElementById(`comment-${applicationId}`);
+      const counter = document.getElementById(`comment-count-${applicationId}`);
+      if (textarea && counter) counter.textContent = `${textarea.value.length}/1200`;
     }
 
     function feedbackSection(app) {
@@ -730,10 +1335,8 @@
         `;
       }
 
-      if (!canLeaveOpportunityFeedback(app) && !ngoFeedback) return "";
-
       const existing = Boolean(app.opportunity_feedback_id);
-      const submittedNotice = existing ? `
+      const volunteerFeedback = existing ? `
         <div class="feedback-panel">
           <div class="received-feedback">
             <strong>Your opportunity feedback was submitted.</strong>
@@ -741,40 +1344,28 @@
           </div>
           ${ngoFeedback}
         </div>
-      ` : "";
-      if (submittedNotice) return submittedNotice;
-
-      const form = canLeaveOpportunityFeedback(app) ? `
+      ` : app.status === "accepted" && app.attendance_confirmed === "YES" ? `
         <div class="feedback-panel">
-          <h3>Share your opportunity feedback</h3>
-          <div class="feedback-grid">
-            <select id="rating-${app.application_id}" aria-label="Rating">
-              ${[5, 4, 3, 2, 1].map(value => `
-                <option value="${value}" ${Number(app.opportunity_feedback_rating) === value ? "selected" : ""}>
-                  ${value} star${value === 1 ? "" : "s"}
-                </option>
-              `).join("")}
-            </select>
-            <input id="impact-${app.application_id}" type="text" maxlength="800"
-                   placeholder="Optional impact note, e.g. What changed because of this work?"
-                   value="${escapeHTML(app.opportunity_feedback_impact_story || "")}">
-          </div>
-          <textarea id="comment-${app.application_id}" maxlength="1200"
-                    placeholder="Tell future volunteers what the experience was like.">${escapeHTML(app.opportunity_feedback_comment || "")}</textarea>
-          <button class="feedback-button" type="button" onclick="saveOpportunityFeedback(${app.application_id})">
-            <i class="fas fa-paper-plane"></i> Submit Feedback
-          </button>
+          <h3>Feedback</h3>
+          <p style="margin-bottom:12px;color:#486179;">Share your experience on a dedicated feedback page.</p>
+          <a class="feedback-button" href="volunteer-feedback.html?application_id=${app.application_id}">
+            <i class="fas fa-star"></i> Give Feedback
+          </a>
           ${ngoFeedback}
         </div>
-      ` : `<div class="feedback-panel">${ngoFeedback}</div>`;
+      ` : ngoFeedback ? `<div class="feedback-panel">${ngoFeedback}</div>` : "";
 
-      return form;
+      return volunteerFeedback;
     }
 
     async function saveOpportunityFeedback(applicationId) {
       const rating = document.getElementById(`rating-${applicationId}`).value;
-      const comment = document.getElementById(`comment-${applicationId}`).value.trim();
+      const commentValue = document.getElementById(`comment-${applicationId}`).value.trim();
       const impact_story = document.getElementById(`impact-${applicationId}`).value.trim();
+      const tags = selectedFeedbackTags(applicationId);
+      const comment = tags.length
+        ? `Tags: ${tags.join(", ")}\n\n${commentValue}`.trim()
+        : commentValue;
 
       try {
         const response = await fetch(`/api/feedback/opportunity/${applicationId}`, {
@@ -787,10 +1378,9 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Could not save feedback.");
-        alert(data.message || "Feedback saved.");
-        await loadApplications();
+        showAlert(data.message || "Feedback submitted. Thank you for helping future volunteers choose well.", () => { loadApplications(); });
       } catch (err) {
-        alert(err.message);
+        showAlert(err.message);
       }
     }
 
@@ -802,18 +1392,33 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "Could not add endorsement to profile.");
-        alert(data.message || "Endorsement added to profile.");
-        await loadApplications();
+        showAlert(data.message || "Endorsement added to profile.", () => { loadApplications(); });
       } catch (err) {
-        alert(err.message);
+        showAlert(err.message);
       }
+    }
+
+    async function withdrawApplication(applicationId) {
+      showConfirm("Withdraw this application? This cannot be undone.", async () => {
+        try {
+          const response = await fetch(`/api/applications/${applicationId}/withdraw`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "Could not withdraw application.");
+          await loadApplications();
+        } catch (err) {
+          showAlert(err.message);
+        }
+      });
     }
 
     function renderApplications() {
       const container = document.getElementById("history-container");
       const filtered = activeFilter === "all"
         ? applications
-        : applications.filter(app => app.status === activeFilter);
+        : applications.filter(app => resolvedStatus(app) === activeFilter);
       const completedHours = applications.reduce((total, app) => {
         if (app.attendance_confirmed !== "YES") return total;
         return total + (Number(app.hours_completed) || 0);
@@ -837,39 +1442,71 @@
 
       container.className = "history-grid";
       container.innerHTML = filtered.map(app => {
-        const status = ["pending", "accepted", "rejected"].includes(app.status) ? app.status : "pending";
+        const status = resolvedStatus(app);
+        const hasCertificateAction = app.attendance_confirmed === "YES";
+        const hasFeedbackAction = app.status === "accepted" && app.attendance_confirmed === "YES";
+        const canWithdraw = app.status === "pending";
         return `
-        <article class="history-card">
+        <article class="history-card" id="application-card-${app.application_id}">
           <div class="card-body">
             <div class="card-top">
               <span class="field-badge"><i class="fas fa-tag"></i>${escapeHTML(app.field || "General")}</span>
-              <span class="status-badge status-${status}">
-                <i class="fas ${statusIcon(status)}"></i>${status}
-              </span>
+              <div class="card-top-right">
+                <span class="status-badge status-${status}">
+                  <i class="fas ${statusIcon(status)}"></i>${status}
+                </span>
+                ${canWithdraw ? `
+                  <button type="button" onclick="withdrawApplication(${app.application_id})"
+                    style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid #e8c0c0;border-radius:999px;background:#fff5f5;color:#b42323;font-size:0.75rem;font-weight:800;cursor:pointer;white-space:nowrap;">
+                    <i class="fas fa-circle-minus"></i> Withdraw
+                  </button>` : ""}
+              </div>
             </div>
             <h2>${escapeHTML(app.title)}</h2>
+            <div class="card-subtitle">
+              <span class="pill"><i class="fas fa-building"></i>${escapeHTML(app.ngo_name || "Unknown NGO")}</span>
+              <span class="pill"><i class="fas fa-clock"></i>${formatHours(app.hours_required)} hrs required</span>
+            </div>
             <p class="description">${escapeHTML(truncateText(app.description))}</p>
-            <div class="meta-list">
-              <span><i class="fas fa-building"></i>${escapeHTML(app.ngo_name || "Unknown NGO")}</span>
-              <span><i class="fas fa-calendar-plus"></i>Applied: ${formatDate(app.applied_at)}</span>
+            <div class="summary-line">
               <span><i class="fas fa-calendar-days"></i>${formatDate(app.start_date)} - ${formatDate(app.end_date)}</span>
-              <span><i class="fas fa-calendar-week"></i>${formatScheduleDays(app.schedule_days)}</span>
-              <span><i class="fas fa-business-time"></i>${formatTime(app.start_time)} - ${formatTime(app.end_time)}</span>
               <span><i class="fas fa-location-dot"></i>${escapeHTML(app.location || "No location")}</span>
-              <span><i class="fas fa-clock"></i>${formatHours(app.hours_required)} hours required</span>
-              <span><i class="fas fa-award"></i>${app.attendance_confirmed === "YES" ? `${formatHours(app.hours_completed)} hours completed` : "Hours not confirmed yet"}</span>
+              <span><i class="fas fa-award"></i>${app.attendance_confirmed === "YES" ? `${formatHours(app.hours_completed)} hrs completed` : "Hours pending"}</span>
+              ${app.volunteer_feedback_id ? `<span><i class="fas fa-comment-dots"></i>NGO feedback available</span>` : ""}
+            </div>
+            <div class="card-extra">
+              ${progressStrip(app)}
+              ${schedulePanel(app)}
             </div>
           </div>
           <div class="card-actions">
-            <a class="details-link" href="detailedView.html?id=${app.opportunity_id}">
-              <i class="fas fa-arrow-up-right-from-square"></i> Details
-            </a>
-            ${app.attendance_confirmed === "YES" ? `
-              <button class="details-link" type="button" onclick="openCertificate(${app.application_id})">
-                <i class="fas fa-certificate"></i> Certificate
-              </button>` : ""}
+            <button class="details-link toggle-details" type="button" id="toggle-card-${app.application_id}" onclick="toggleCardDetails(${app.application_id})">
+              <i class="fas fa-chevron-down"></i> More
+            </button>
+            <div class="more-actions">
+              <button class="details-link menu-button" type="button" aria-label="Open actions" onclick="toggleActionMenu(${app.application_id})">
+                <i class="fas fa-ellipsis"></i>
+              </button>
+              <div class="action-menu" id="action-menu-${app.application_id}">
+                ${app.volunteer_feedback_id ? `
+                  <a class="menu-item" href="ngo-feedback-view.html?application_id=${app.application_id}">
+                    <i class="fas fa-comment-dots"></i> View NGO Feedback
+                  </a>` : ""}
+                ${hasCertificateAction ? `
+                  <button class="menu-item" type="button" onclick="previewCertificate(${app.application_id})">
+                    <i class="fas fa-certificate"></i> Preview Certificate
+                  </button>` : ""}
+                ${hasFeedbackAction && !app.opportunity_feedback_id ? `
+                  <a class="menu-item" href="volunteer-feedback.html?application_id=${app.application_id}">
+                    <i class="fas fa-star"></i> Give Feedback
+                  </a>` : ""}
+                ${app.opportunity_feedback_id ? `
+                  <a class="menu-item" href="volunteer-feedback.html?application_id=${app.application_id}">
+                    <i class="fas fa-circle-check"></i> Feedback Sent
+                  </a>` : ""}
+              </div>
+            </div>
           </div>
-          ${feedbackSection(app)}
         </article>
       `;
       }).join("");
@@ -917,10 +1554,51 @@
         const blob = new Blob([html], { type: "text/html" });
         const url = URL.createObjectURL(blob);
         window.open(url, "_blank");
+        localStorage.setItem(`certificateDownloaded:${applicationId}`, "true");
+        renderApplications();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       } catch (err) {
-        alert(err.message);
+        showAlert(err.message);
       }
+    }
+
+    function previewCertificate(applicationId) {
+      const app = applications.find(item => Number(item.application_id) === Number(applicationId));
+      if (!app || app.attendance_confirmed !== "YES") {
+        showAlert("Certificate unlocks after the NGO confirms your attendance.");
+        return;
+      }
+      currentCertificateApplicationId = applicationId;
+      currentCertificateVerifyUrl = app.certificate_id
+        ? `${window.location.origin}/api/certificates/verify/${encodeURIComponent(app.certificate_id)}`
+        : "";
+      document.getElementById("certificate-preview").innerHTML = `
+        <div class="brand">CivicConnect</div>
+        <h2 id="certificate-preview-title">Certificate of Volunteering</h2>
+        <p>This certifies that</p>
+        <h3>${escapeHTML(localStorage.getItem("userName") || "Volunteer")}</h3>
+        <p>completed <strong>${formatHours(app.hours_completed)} volunteer hours</strong> for <strong>${escapeHTML(app.title)}</strong> with <strong>${escapeHTML(app.ngo_name || "NGO")}</strong>.</p>
+        <p>${formatDate(app.start_date)} - ${formatDate(app.end_date)}</p>
+        ${app.certificate_id ? `<p><strong>Verification ID:</strong> ${escapeHTML(app.certificate_id)}</p>` : ""}
+      `;
+      document.getElementById("certificate-modal").classList.add("open");
+    }
+
+    function closeCertificatePreview() {
+      document.getElementById("certificate-modal").classList.remove("open");
+    }
+
+    function openCurrentCertificate() {
+      if (currentCertificateApplicationId) openCertificate(currentCertificateApplicationId);
+    }
+
+    async function copyCurrentCertificateLink() {
+      if (!currentCertificateVerifyUrl) {
+        showAlert("Verification link is not available yet.");
+        return;
+      }
+      await navigator.clipboard.writeText(currentCertificateVerifyUrl);
+      showAlert("Verification link copied.");
     }
 
     document.querySelectorAll(".status-filters .filter-btn").forEach(button => {
@@ -938,6 +1616,12 @@
     });
 
     document.getElementById("download-schedule-btn").addEventListener("click", downloadAcceptedSchedule);
+
+    document.addEventListener("click", event => {
+      if (!event.target.closest(".more-actions")) {
+        document.querySelectorAll(".action-menu.open").forEach(menu => menu.classList.remove("open"));
+      }
+    });
 
     document.addEventListener("DOMContentLoaded", loadApplications);
   </script>

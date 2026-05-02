@@ -368,6 +368,7 @@
     }
   </style>
   <link rel="stylesheet" href="civic-ui.css">
+  <script src="app-utils.js"></script>
 </head>
 <body>
   <div class="overlay"></div>
@@ -623,7 +624,7 @@
     }));
 
     // Feedback form
-    document.getElementById('feedback-form')?.addEventListener('submit', e => { e.preventDefault(); alert('Thank you — your message has been sent!'); e.target.reset(); });
+    document.getElementById('feedback-form')?.addEventListener('submit', e => { e.preventDefault(); showAlert('Thank you — your message has been sent!', () => e.target.reset()); });
   </script>
 </body>
 </html>
