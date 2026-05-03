@@ -14,12 +14,44 @@ document.addEventListener("DOMContentLoaded", function() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         document.getElementById("email").value = payload.email;
         document.getElementById("opportunityId").value = getOpportunityId();
+        validateOpportunityCanAcceptApplications(getOpportunityId());
     } catch (error) {
         console.error("Error decoding token:", error);
         showAlert("Invalid session. Please log in again.", () => { localStorage.removeItem("token"); window.location.href = "login.html"; });
     }
 });
 
+function disableApplyForm(message) {
+    const applyButton = document.querySelector(".btn-success");
+    if (applyButton) {
+        applyButton.disabled = true;
+        applyButton.textContent = message;
+    }
+}
+
+function isClosedOpportunity(opportunity) {
+    return ["closed", "completed", "archived"].includes(String(opportunity?.status || "open").toLowerCase());
+}
+
+async function validateOpportunityCanAcceptApplications(opportunityId) {
+    if (!opportunityId) {
+        disableApplyForm("Unavailable");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/opportunities/${opportunityId}`);
+        const opportunity = await response.json();
+        if (!response.ok) throw new Error(opportunity.error || "Could not load opportunity.");
+
+        if (isClosedOpportunity(opportunity)) {
+            disableApplyForm("Applications Closed");
+        }
+    } catch (error) {
+        console.error("Error loading opportunity:", error);
+        disableApplyForm("Unavailable");
+    }
+}
 
 function applyForOpportunity() {
     const token = localStorage.getItem("token");
@@ -48,11 +80,18 @@ function applyForOpportunity() {
             },
             body: JSON.stringify(applicationData)
         })
-        .then(response => response.json())
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "Application failed.");
+            return data;
+        })
         .then(data => {
             showAlert(data.message, () => { window.location.href = "index.html"; });
         })
-        .catch(error => console.error("Error applying for opportunity:", error));
+        .catch(error => {
+            console.error("Error applying for opportunity:", error);
+            showAlert(error.message || "Application failed.");
+        });
 }
 
 

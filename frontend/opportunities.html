@@ -455,6 +455,10 @@
             background: linear-gradient(90deg, #dc3545, #ff7a18);
         }
 
+        .opp-card.closed .card-accent {
+            background: linear-gradient(90deg, #64748b, #94a3b8);
+        }
+
         .status-badge {
             position: absolute;
             top: 14px;
@@ -488,6 +492,11 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 12px;
+        }
+
+        .opp-card.passed .card-meta-top {
+            min-height: 30px;
+            padding-right: 108px;
         }
 
         .ngo-tag {
@@ -1119,6 +1128,14 @@
         return endDate ? endDate < new Date() : false;
     }
 
+    function opportunityLifecycle(opportunity) {
+        return String(opportunity.lifecycle_status || opportunity.status || "open").toLowerCase();
+    }
+
+    function isClosedOpportunity(opportunity) {
+        return ["closed", "completed", "archived"].includes(opportunityLifecycle(opportunity));
+    }
+
     function renderCards(opportunities) {
         const container = document.getElementById("opportunitiesContainer");
         const countEl = document.getElementById("results-count");
@@ -1144,18 +1161,25 @@
         container.innerHTML = "";
         opportunities.forEach((o, i) => {
             const isPassed = isPastOpportunity(o);
+            const isClosed = isClosedOpportunity(o);
+            const lifecycle = opportunityLifecycle(o);
+            const closedLabel = lifecycle === "completed" ? "Completed" : lifecycle === "archived" ? "Archived" : "Closed";
             const acceptedCount = Number(o.accepted_count) || 0;
             const capacity = Number(o.capacity) || 0;
             const isFull = capacity > 0 && acceptedCount >= capacity;
             const card = document.createElement("div");
-            card.className = `opp-card${isPassed ? ' passed' : ''}`;
+            card.className = `opp-card${isPassed ? ' passed' : ''}${isClosed ? ' closed' : ''}`;
             card.dataset.title    = (o.title || '').toLowerCase();
             card.dataset.location = (o.location || '').toLowerCase();
             card.dataset.desc     = (o.description || '').toLowerCase();
             card.dataset.field    = (o.field || '').toLowerCase();
             card.style.animationDelay = `${i * 0.05}s`;
 
-            const applyBtn = isPassed
+            const applyBtn = isClosed
+                ? `<button class="btn-apply-card passed" disabled>
+                       <i class="fa fa-lock"></i> ${closedLabel}
+                   </button>`
+                : isPassed
                 ? `<button class="btn-apply-card passed" disabled>
                        <i class="fa fa-ban"></i> Passed
                    </button>`
@@ -1175,7 +1199,7 @@
                        <i class="fa fa-lock"></i> Login to Apply
                    </button>`;
 
-            const canShowSaveButton = canApplyToOpportunities() && (!isPassed || o.is_saved);
+            const canShowSaveButton = canApplyToOpportunities() && !isClosed && (!isPassed || o.is_saved);
             const saveBtn = canShowSaveButton
                 ? `<button class="btn-save-card${o.is_saved ? ' saved' : ''}"
                            title="${o.is_saved ? 'Remove saved opportunity' : 'Save opportunity'}"
@@ -1226,9 +1250,6 @@
                 </div>
                 <div class="card-footer-actions">
                     ${saveBtn}
-                    <a href="detailedView.html?id=${o.opportunity_id}" class="btn-details">
-                        <i class="fa fa-arrow-up-right-from-square me-1"></i> Details
-                    </a>
                     ${applyBtn}
                 </div>`;
 
@@ -1293,6 +1314,10 @@
         if (!opportunity) return;
 
         const wasSaved = Boolean(opportunity.is_saved);
+        if (!wasSaved && isClosedOpportunity(opportunity)) {
+            showToast("Closed opportunities cannot be saved.", "error");
+            return;
+        }
         if (!wasSaved && isPastOpportunity(opportunity)) {
             showToast("Passed opportunities cannot be saved.", "error");
             return;
@@ -1357,6 +1382,10 @@
         }
 
         const opportunity = allOpportunities.find(o => Number(o.opportunity_id) === Number(id));
+        if (opportunity && isClosedOpportunity(opportunity)) {
+            showToast("Applications are closed for this opportunity.", "error");
+            return;
+        }
         if (opportunity && isPastOpportunity(opportunity)) {
             showToast("This opportunity has passed and can no longer accept applications.", "error");
             return;

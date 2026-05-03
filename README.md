@@ -41,6 +41,7 @@ DB_NAME=civicconnect
 JWT_SECRET=replace_me
 JWT_EXPIRES_IN=1h
 EMAIL_USER=your_email
+EMAIL_APP_PASSWORD=your_gmail_app_password
 CLIENT_ID=your_google_client_id
 CLIENT_SECRET=your_google_client_secret
 REFRESH_TOKEN=your_refresh_token
@@ -48,6 +49,8 @@ REDIRECT_URI=https://developers.google.com/oauthplayground
 ```
 
 Never commit real secrets.
+
+For local email sending, the simplest setup is a Gmail app password in `EMAIL_APP_PASSWORD` with 2-Step Verification enabled on the Gmail account. If you prefer OAuth2, leave `EMAIL_APP_PASSWORD` unset and make sure `CLIENT_ID`, `CLIENT_SECRET`, `REFRESH_TOKEN`, and `REDIRECT_URI` are current. Google returns `invalid_grant` when the refresh token has expired or been revoked, so generate a new refresh token in that case.
 
 ## Migrations
 

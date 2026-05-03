@@ -68,6 +68,37 @@ oAuth2Client.setCredentials({
 
 console.log('OAuth2 client initialized with refresh token from environment');
 
+function getGoogleAuthErrorCode(err) {
+    if (err?.responseCode === 535) return 'gmail_bad_credentials';
+    return err?.response?.data?.error || err?.code;
+}
+
+function isGoogleMailAuthError(err) {
+    return ['invalid_grant', 'unauthorized_client', 'invalid_client', 'gmail_bad_credentials', 'EAUTH'].includes(getGoogleAuthErrorCode(err));
+}
+
+function getMailSetupErrorMessage(err) {
+    const googleAuthErrorCode = getGoogleAuthErrorCode(err);
+
+    if (googleAuthErrorCode === 'invalid_grant') {
+        return 'Email service authorization expired. Update REFRESH_TOKEN or configure EMAIL_APP_PASSWORD in backend/.env.';
+    }
+
+    if (googleAuthErrorCode === 'unauthorized_client') {
+        return 'Email service authorization failed. Make sure CLIENT_ID, CLIENT_SECRET, and REFRESH_TOKEN are from the same Google OAuth client, or configure EMAIL_APP_PASSWORD in backend/.env.';
+    }
+
+    if (googleAuthErrorCode === 'invalid_client') {
+        return 'Google rejected the OAuth client secret. Update CLIENT_ID and CLIENT_SECRET from the same Google Cloud OAuth client, or configure EMAIL_APP_PASSWORD in backend/.env.';
+    }
+
+    if (googleAuthErrorCode === 'gmail_bad_credentials' || googleAuthErrorCode === 'EAUTH') {
+        return 'Gmail rejected EMAIL_USER or EMAIL_APP_PASSWORD. Use the Google-generated 16-character app password for the same Gmail account.';
+    }
+
+    return 'Email service is not configured correctly.';
+}
+
 async function refreshAccessToken() {
     try {
         oAuth2Client.setCredentials({
@@ -84,6 +115,26 @@ async function refreshAccessToken() {
 
 async function createTransporter() {
     try {
+        const emailAppPassword = process.env.EMAIL_APP_PASSWORD
+            ? process.env.EMAIL_APP_PASSWORD.replace(/\s+/g, '')
+            : '';
+
+        if (emailAppPassword) {
+            return nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: emailAppPassword,
+                },
+            });
+        }
+
+        const requiredOAuthVars = ['EMAIL_USER', 'CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN'];
+        const missingOAuthVars = requiredOAuthVars.filter((key) => !process.env[key]);
+        if (missingOAuthVars.length > 0) {
+            throw new Error(`Missing email environment variables: ${missingOAuthVars.join(', ')}`);
+        }
+
         const accessToken = await refreshAccessToken();
         return nodemailer.createTransport({
             service: 'gmail',
@@ -287,6 +338,21 @@ function safeUploadName(file, allowedTypes) {
     return `${Date.now()}-${crypto.randomUUID()}${ext}`;
 }
 
+async function sendVerificationEmail({ email, name, verificationToken }) {
+    const backendBaseUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+    const verificationLink = `${backendBaseUrl}/api/verify-email?token=${verificationToken}`;
+    const transporter = await createTransporter();
+
+    await transporter.sendMail({
+        from: `CivicConnect <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Email Verification',
+        html: `<p>Hello ${escapeHtml(name)},</p><p>Please verify your email:</p><a href="${verificationLink}">Verify Email</a>`
+    });
+
+    return verificationLink;
+}
+
 function fileFilterFor(allowedTypes) {
     return (req, file, cb) => {
         const ext = path.extname(file.originalname || '').toLowerCase();
@@ -323,12 +389,36 @@ app.post('/api/register', async (req, res) => {
         await connection.beginTransaction();
 
         const [existingUsers] = await connection.execute(
-            'SELECT user_id FROM Users WHERE email = ?', [email]
+            'SELECT user_id, name, email, Verified, verification_token FROM Users WHERE email = ?', [email]
         );
 
         if (existingUsers.length > 0) {
+            const existingUser = existingUsers[0];
             await connection.rollback();
             connection.release();
+
+            if (existingUser.Verified !== 'YES') {
+                const verificationToken = existingUser.verification_token || crypto.randomBytes(32).toString('hex');
+                if (!existingUser.verification_token) {
+                    await db.execute(
+                        'UPDATE Users SET verification_token = ? WHERE user_id = ?',
+                        [verificationToken, existingUser.user_id]
+                    );
+                }
+
+                try {
+                    await sendVerificationEmail({
+                        email: existingUser.email,
+                        name: existingUser.name,
+                        verificationToken
+                    });
+                    return res.status(200).json({ message: 'Verification email sent. Please check your inbox.' });
+                } catch (emailErr) {
+                    console.error('Verification resend failed:', emailErr.message);
+                    return res.status(503).json({ error: getMailSetupErrorMessage(emailErr) });
+                }
+            }
+
             return res.status(400).json({ error: 'Email already exists' });
         }
 
@@ -371,17 +461,10 @@ app.post('/api/register', async (req, res) => {
         connection.release();
 
         try {
-            const backendBaseUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
-            const verificationLink = `${backendBaseUrl}/api/verify-email?token=${verificationToken}`;
-            const transporter = await createTransporter();
-            await transporter.sendMail({
-                from: `CivicConnect <${process.env.EMAIL_USER}>`,
-                to: email,
-                subject: 'Email Verification',
-                html: `<p>Hello ${name},</p><p>Please verify your email:</p><a href="${verificationLink}">Verify Email</a>`
-            });
+            await sendVerificationEmail({ email, name, verificationToken });
         } catch (emailErr) {
-            console.error('Email sending failed (ignored):', emailErr.message);
+            console.error('Email sending failed:', emailErr.message);
+            return res.status(503).json({ error: getMailSetupErrorMessage(emailErr) });
         }
 
         return res.status(201).json({ message: 'Registration successful. Check your email to verify your account.' });
@@ -485,28 +568,40 @@ app.post('/api/request-password-reset', async (req, res) => {
 
         const frontendBaseUrl = process.env.FRONTEND_URL || 'https://civicconnect-2.onrender.com';
         const resetLink = `${frontendBaseUrl}/reset-password.html?token=${resetToken}`;
-        const transporter = await createTransporter();
+        try {
+            const transporter = await createTransporter();
 
-        await transporter.sendMail({
-            from: `CivicConnect <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Password Reset',
-            html: `
-                <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-                    <h2>Password Reset Request</h2>
-                    <p>You requested a password reset for your CivicConnect account.</p>
-                    <p>Please click the button below to set a new password. This link is valid for 1 hour.</p>
-                    <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
-                    <p>If you did not request this, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #eee;" />
-                    <p style="font-size: 12px; color: #666;">If the button doesn't work, copy and paste this link:<br>${resetLink}</p>
-                </div>
-            `
-        });
+            await transporter.sendMail({
+                from: `CivicConnect <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: 'Password Reset',
+                html: `
+                    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                        <h2>Password Reset Request</h2>
+                        <p>You requested a password reset for your CivicConnect account.</p>
+                        <p>Please click the button below to set a new password. This link is valid for 1 hour.</p>
+                        <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+                        <p>If you did not request this, please ignore this email.</p>
+                        <hr style="border: none; border-top: 1px solid #eee;" />
+                        <p style="font-size: 12px; color: #666;">If the button doesn't work, copy and paste this link:<br>${resetLink}</p>
+                    </div>
+                `
+            });
+        } catch (emailErr) {
+            if (process.env.NODE_ENV !== 'production' && isGoogleMailAuthError(emailErr)) {
+                console.error('Password reset email failed. Development reset link:', resetLink);
+            } else {
+                throw emailErr;
+            }
+        }
 
         res.status(200).json({ message: genericMessage });
     } catch (err) {
         console.error('Error requesting password reset:', err);
+        if (isGoogleMailAuthError(err)) {
+            return res.status(503).json({ error: getMailSetupErrorMessage(err) });
+        }
+
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -868,7 +963,7 @@ app.patch('/api/opportunities/:id', authenticateToken, async (req, res) => {
             SET title = ?, field = ?, description = ?, start_date = ?, end_date = ?,
                 schedule_days = ?, start_time = ?, end_time = ?, hours_required = ?,
                 capacity = ?, location = ?, application_questions = ?,
-                status = CASE WHEN status = 'completed' OR status = 'archived' THEN status ELSE 'open' END
+                status = CASE WHEN status IN ('completed', 'archived', 'closed') THEN status ELSE 'open' END
             WHERE opportunity_id = ? AND ngo_id = ?
         `, [
             title,
@@ -1116,7 +1211,7 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 
     try {
         const [opportunity] = await db.execute(
-            `SELECT opportunity_id, title, end_date, capacity, application_questions,
+            `SELECT opportunity_id, title, end_date, capacity, application_questions, status,
                     (
                         SELECT COUNT(*)
                         FROM Applications
@@ -1129,6 +1224,13 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
         );
         if (opportunity.length === 0) {
             return res.status(404).json({ success: false, error: "Opportunity not found" });
+        }
+
+        if (!['open', 'in_progress'].includes(String(opportunity[0].status || 'open'))) {
+            return res.status(400).json({
+                success: false,
+                error: "Applications are closed for this opportunity."
+            });
         }
 
         if (Number(opportunity[0].capacity) > 0 && Number(opportunity[0].accepted_count) >= Number(opportunity[0].capacity)) {
@@ -2191,7 +2293,7 @@ app.get('/api/admin/opportunities', authenticateToken, requireAdmin, async (req,
               AND (? = '' OR (? = 'upcoming' AND o.end_date >= CURDATE()) OR (? = 'passed' AND o.end_date < CURDATE())
                           OR o.status = ?)
             ORDER BY o.created_at DESC
-        `, [search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, field, field, status, status, status]);
+        `, [search, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, field, field, status, status, status, status]);
         res.json(opportunities.map(withOpportunityLifecycle));
     } catch (err) {
         console.error('Admin opportunities error:', err);

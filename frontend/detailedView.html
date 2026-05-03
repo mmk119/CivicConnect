@@ -239,6 +239,28 @@
       return Number.isInteger(hours) ? String(hours) : hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
     }
 
+    function getLocalEndOfDay(value) {
+      if (!value) return null;
+      const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (!match) return null;
+      const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      date.setHours(23, 59, 59, 999);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function isClosedOpportunity(opportunity) {
+      return ["closed", "completed", "archived"].includes(String(opportunity?.status || "open").toLowerCase());
+    }
+
+    function setApplyButtonUnavailable(label) {
+      const applyButton = document.getElementById('applyButton');
+      if (!applyButton) return;
+      applyButton.textContent = label;
+      applyButton.style.pointerEvents = 'none';
+      applyButton.style.background = '#6c757d';
+      applyButton.style.opacity = '.75';
+    }
+
     if (!oppId) {
       showToast("No opportunity was selected.", "error");
     } else {
@@ -281,11 +303,14 @@
 
           const capacity = Number(data.capacity) || 0;
           const accepted = Number(data.accepted_count) || 0;
-          if (capacity > 0 && accepted >= capacity) {
-            const applyButton = document.getElementById('applyButton');
-            applyButton.textContent = 'Opportunity Full';
-            applyButton.style.pointerEvents = 'none';
-            applyButton.style.background = '#6c757d';
+          const endDate = getLocalEndOfDay(data.end_date);
+          const isPast = endDate ? endDate < new Date() : false;
+          if (isClosedOpportunity(data)) {
+            setApplyButtonUnavailable(String(data.status).toLowerCase() === 'completed' ? 'Completed' : 'Applications Closed');
+          } else if (isPast) {
+            setApplyButtonUnavailable('Passed');
+          } else if (capacity > 0 && accepted >= capacity) {
+            setApplyButtonUnavailable('Opportunity Full');
           }
         })
         .catch(err => {
@@ -431,6 +456,15 @@
       }
 
       const applyButton = document.getElementById('applyButton');
+      if (isClosedOpportunity(currentOpportunity)) {
+        showToast('Applications are closed for this opportunity.', 'error');
+        return;
+      }
+      const endDate = getLocalEndOfDay(currentOpportunity?.end_date);
+      if (endDate && endDate < new Date()) {
+        showToast('This opportunity has passed and can no longer accept applications.', 'error');
+        return;
+      }
       if (
         currentOpportunity &&
         Number(currentOpportunity.capacity) > 0 &&

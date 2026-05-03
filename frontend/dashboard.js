@@ -58,6 +58,13 @@ function getDateOnly(value) {
     return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
+function getEndOfDay(value) {
+    const date = getDateOnly(String(value || "").slice(0, 10));
+    if (!date) return null;
+    date.setHours(23, 59, 59, 999);
+    return date;
+}
+
 function isValidTimeValue(value) {
     return /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(String(value || ""));
 }
@@ -261,10 +268,17 @@ function loadOpportunities() {
                 li.className = "list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2";
                 const lifecycle = op.lifecycle_status || op.status || "open";
                 const canClose = lifecycle === "open" || lifecycle === "in_progress";
-                const canFinalize = lifecycle !== "completed" && lifecycle !== "archived";
+                const endDate = getEndOfDay(op.end_date);
+                const hasEnded = endDate ? endDate <= new Date() : false;
+                const canFinalize = lifecycle !== "completed" && lifecycle !== "archived" && hasEnded && !op.needs_attendance_review;
+                const finalizeHint = !hasEnded
+                    ? "Finalize is available after the end date."
+                    : op.needs_attendance_review
+                    ? "Confirm attendance or mark no-show for accepted volunteers before finalizing."
+                    : "";
                 li.innerHTML = `
                     <span>${op.title} - ${op.field || "No field"} - ${formatScheduleDays(op.schedule_days)} ${formatTime(op.start_time)}-${formatTime(op.end_time)} - ${formatHours(op.hours_required)} hours - ${new Date(op.start_date).toDateString()} - ${op.location}<br>
-                    <small>Status: ${lifecycle}${op.needs_attendance_review ? " | Needs attendance review" : ""} | Applicants: ${op.pending_count || 0} pending / ${op.accepted_count || 0} accepted / ${op.rejected_count || 0} rejected | Capacity: ${op.accepted_count || 0}/${op.capacity || 0}</small></span>
+                    <small>Status: ${lifecycle}${op.needs_attendance_review ? " | Needs attendance review" : ""}${finalizeHint ? ` | ${finalizeHint}` : ""} | Applicants: ${op.pending_count || 0} pending / ${op.accepted_count || 0} accepted / ${op.rejected_count || 0} rejected | Capacity: ${op.accepted_count || 0}/${op.capacity || 0}</small></span>
                     <span class="d-flex flex-wrap gap-2">
                         <button class="btn btn-info btn-sm" onclick="viewApplicants(${op.opportunity_id}, '${encodeURIComponent(op.title || "Opportunity")}')">
                             View Applicants

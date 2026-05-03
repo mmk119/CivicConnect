@@ -296,7 +296,7 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "Registration failed");
 
-            showAlert("Registration successful!", () => { window.location.href = "login.html"; });
+            showAlert(data.message || "Registration successful! Check your email to verify your account.", () => { window.location.href = "login.html"; });
         } catch (error) {
             showAlert(error.message);
         }
